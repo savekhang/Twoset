@@ -1,0 +1,92 @@
+# =========================
+# 0️⃣ Chuẩn bị môi trường
+# =========================
+!pip install --upgrade ultralytics --quiet
+from google.colab import drive
+drive.mount('/content/drive', force_remount=True)
+
+import os, shutil, glob, time
+from ultralytics import YOLO
+
+# =========================
+# 1️⃣ Config
+# =========================
+DRIVE_DATASET = '/content/drive/MyDrive/datasets'         # Dataset trên Drive
+DATASET_LOCAL = '/content/datasets'                       # Copy về đây để train nhanh hơn
+DATA_YAML = f'{DATASET_LOCAL}/data.yaml'
+
+PROJECT_DIR = '/content/yolo_runs'                        # Train trong /content
+RUN_NAME = 'cigarette_vape_yolov11'
+SAVE_DIR = '/content/drive/MyDrive/yolo_backup'           # Backup sang Drive
+
+EPOCHS = 100
+BATCH = 16
+IMG_SIZE = 640
+DEVICE = 'cpu'  # 'cpu' nếu không có GPU, 0 nếu muốn dùng GPU
+
+# =========================
+# 2️⃣ Copy dataset từ Drive về Content
+# =========================
+if os.path.exists(DATASET_LOCAL):
+    shutil.rmtree(DATASET_LOCAL)
+shutil.copytree(DRIVE_DATASET, DATASET_LOCAL)
+print("✅ Dataset đã copy xong về Content!")
+
+# =========================
+# 3️⃣ Kiểm tra checkpoint để resume từ Drive
+# =========================
+os.makedirs(SAVE_DIR, exist_ok=True)
+
+# Tìm file last.pt mới nhất trong Drive (backup trước đó)
+drive_last_ckpts = sorted(glob.glob(os.path.join(SAVE_DIR, f"{RUN_NAME}_epoch*_last.pt")))
+latest_drive_ckpt = drive_last_ckpts[-1] if drive_last_ckpts else None
+
+local_last_weight = os.path.join(PROJECT_DIR, RUN_NAME, 'weights', 'last.pt')
+
+if latest_drive_ckpt:
+    print(f"🔄 Phát hiện checkpoint mới nhất trên Drive: {latest_drive_ckpt}")
+    # Copy về local để resume
+    os.makedirs(os.path.dirname(local_last_weight), exist_ok=True)
+    shutil.copy2(latest_drive_ckpt, local_last_weight)
+    model = YOLO(local_last_weight)
+    resume_flag = True
+else:
+    print("🚀 Không có checkpoint. Bắt đầu train mới...")
+    model = YOLO('yolov8n.pt')  # hoặc yolov8s.pt nếu muốn chính xác hơn
+    resume_flag = False
+
+# =========================
+# 4️⃣ Train và backup mỗi epoch
+# =========================
+
+results = model.train(
+    data=DATA_YAML,
+    epochs=EPOCHS,
+    imgsz=IMG_SIZE,
+    batch=BATCH,
+    device=DEVICE,
+    patience=20,
+    project=PROJECT_DIR,
+    name=RUN_NAME,
+    resume=resume_flag,
+    save_period=1  # Lưu checkpoint mỗi epoch
+)
+
+# =========================
+# 5️⃣ Backup toàn bộ checkpoint lên Drive
+# =========================
+weight_dir = os.path.join(PROJECT_DIR, RUN_NAME, 'weights')
+epoch_files = sorted(glob.glob(os.path.join(weight_dir, '*.pt')))
+
+for f in epoch_files:
+    filename = os.path.basename(f)
+    dst = os.path.join(SAVE_DIR, f"{RUN_NAME}_{filename}")
+    shutil.copy2(f, dst)
+    print(f"💾 Backup {filename} -> {SAVE_DIR}")
+
+# Backup luôn toàn bộ thư mục run cuối cùng
+final_backup = os.path.join(SAVE_DIR, f'{RUN_NAME}_final')
+if os.path.exists(final_backup):
+    shutil.rmtree(final_backup)
+shutil.copytree(os.path.join(PROJECT_DIR, RUN_NAME), final_backup)
+print("\n✅ Training hoàn tất và backup sang Drive tại:", SAVE_DIR)
