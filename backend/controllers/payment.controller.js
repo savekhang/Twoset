@@ -1,7 +1,7 @@
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const db = require('../config/db');
 const { sendNotification } = require('../utils/notification');
-const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:8081';
+const FRONTEND_URL = process.env.FRONTEND_URL;
 
 exports.createStripeSession = async (req, res) => {
   const userId = req.user?.id;
@@ -22,8 +22,8 @@ exports.createStripeSession = async (req, res) => {
         quantity: 1,
       }],
       mode: 'payment',
-      success_url: `${FRONTEND_URL}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${FRONTEND_URL}/payment-cancelled`,
+      success_url: 'https://webvercel-navy.vercel.app/success.html?session_id={CHECKOUT_SESSION_ID}',
+      cancel_url: 'https://webvercel-navy.vercel.app/cancel.html',
       metadata: { userId: userId.toString() },
     });
 
