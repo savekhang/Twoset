@@ -37,10 +37,34 @@ export default function HomeScreen({ navigation }) {
     }
   };
 
-  const handleUpgradePremium = () => {
-  navigation.navigate('Payment');
-};
+  const handleUpgradePremium = async () => {
+  try {
+    const token = await AsyncStorage.getItem('token');
+    if (!token) {
+      Alert.alert('Lỗi', 'Bạn cần đăng nhập để nâng cấp.');
+      return;
+    }
 
+    const res = await axios.post(
+      `${API_BASE_URL}/payment/stripe/create-session`,
+      {},
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    if (res.data && res.data.url) {
+      Linking.openURL(res.data.url); // Mở link Stripe Checkout
+    } else {
+      Alert.alert('Lỗi', 'Không lấy được URL thanh toán.');
+    }
+  } catch (error) {
+    console.error('Stripe payment error:', error);
+    Alert.alert('Lỗi', 'Không thể tạo phiên thanh toán.');
+  }
+};
 
   return (
     <View style={styles.container}>

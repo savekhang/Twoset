@@ -7,7 +7,6 @@ const linking = {
   config: {
     screens: {
       Success: 'success',
-      // Các screen khác nếu muốn dùng deep link
     },
   },
 };
