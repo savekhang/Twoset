@@ -9,9 +9,7 @@ router.get('/', verifyToken, notificationController.getNotifications);
 router.delete('/:id', verifyToken, notificationController.deleteNotification);
 // Xoá tất cả thông báo
 router.delete('/', verifyToken, notificationController.deleteAllNotifications);
-// Đánh dấu một thông báo là đã đọc
-//router.patch('/:id/read', verifyToken, notificationController.markAsRead);
 // Đánh dấu tất cả thông báo là đã đọc
-//router.patch('/read/all', verifyToken, notificationController.markAllAsRead);
+router.put('/markAllAsRead', verifyToken, notificationController.markAllAsRead);
 
 module.exports = router;

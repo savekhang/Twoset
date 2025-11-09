@@ -1,10 +1,16 @@
-// routes/messages.js
-const express = require('express');
+// routes/message.routes.js
+const express = require("express");
 const router = express.Router();
-const messageController = require('../controllers/message.controller');
 const verifyToken = require('../middlewares/auth.middleware');
+const messageController = require("../controllers/message.controller");
 
-router.get('/conversations', verifyToken, messageController.getConversations);
-router.get('/with/:userId', verifyToken, messageController.getMessagesWithUser);
+// Danh sách match
+router.get("/match-list", verifyToken, messageController.getMatchList);
+
+// Lấy tin nhắn theo match_id
+router.get("/:match_id", verifyToken, messageController.getMessagesByMatch);
+
+// Gửi tin nhắn
+router.post("/", verifyToken, messageController.sendMessage);
 
 module.exports = router;

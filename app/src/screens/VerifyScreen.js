@@ -1,62 +1,93 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Alert } from 'react-native';
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  Alert,
+  ActivityIndicator,
+  Keyboard,
+  TouchableWithoutFeedback,
+} from 'react-native';
+import styles from '../styles/VerifyScreen.styles';
 import axios from 'axios';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_BASE_URL } from '@env';
-import { useNavigation, useRoute } from '@react-navigation/native';
-import styles from '../styles/LoginScreen.styles'; // Dùng chung với Login
 
-const VerifyScreen = () => {
-  const navigation = useNavigation();
-  const route = useRoute();
+export default function VerifyScreen({ route, navigation }) {
+  const email = route?.params?.email || ''; // Lấy email từ bước đăng ký
   const [code, setCode] = useState('');
-  const email = route.params?.email;
-
-  console.log('API_BASE_URL:', API_BASE_URL); // Debug API_BASE_URL
-  console.log('Email received:', email); // Debug email
+  const [loading, setLoading] = useState(false);
 
   const handleVerify = async () => {
-    if (!code || !email) {
-      return Alert.alert('Lỗi', 'Vui lòng nhập mã xác minh và email');
+    if (!email) {
+      Alert.alert('Lỗi', 'Thiếu thông tin email, vui lòng quay lại bước trước.');
+      return;
+    }
+
+    if (!code.trim()) {
+      Alert.alert('Lỗi', 'Vui lòng nhập mã xác thực.');
+      return;
     }
 
     try {
+      setLoading(true);
+
+      // ✅ Gọi đúng API xác thực mã (truyền đúng key: code)
       const res = await axios.post(`${API_BASE_URL}/auth/verify`, {
         email,
-        code,
+        code, // backend yêu cầu 'code'
       });
 
-      const { token } = res.data;
-      await AsyncStorage.setItem('token', token); // Lưu token vào AsyncStorage
-      console.log('Token saved:', token); // Debug token
-
-      Alert.alert('Thành công', res.data.message || 'Xác minh tài khoản thành công');
-      navigation.navigate('UploadAvatar', { email });
+      // ✅ Kiểm tra phản hồi từ backend
+      const message = res.data?.message || '';
+      if (message.toLowerCase().includes('success')) {
+        Alert.alert('Thành công', 'Tài khoản của bạn đã được xác thực!', [
+          { text: 'Đăng nhập', onPress: () => navigation.navigate('Login') },
+        ]);
+      } else {
+        Alert.alert('Lỗi', message || 'Mã xác thực không hợp lệ.');
+      }
     } catch (err) {
-      console.error('❌ Lỗi xác minh:', err.response?.data || err.message);
-      Alert.alert('Xác minh thất bại', err.response?.data?.message || 'Đã có lỗi xảy ra');
+      console.error('Verify error:', err);
+      Alert.alert(
+        'Lỗi',
+        err.response?.data?.message || 'Không thể xác thực. Vui lòng thử lại.'
+      );
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.logo}>𝒯 𝓌 𝑜 𝓈 𝑒 𝓉</Text>
-      <Text style={styles.slogan}>Nhập mã xác minh được gửi đến email của bạn</Text>
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+      <View style={styles.container}>
+        <Text style={styles.title}>Xác minh tài khoản</Text>
+        <Text style={styles.subtitle}>
+          Nhập mã xác thực được gửi đến email của bạn
+        </Text>
 
-      <TextInput
-        placeholder="Mã xác minh"
-        placeholderTextColor="#666"
-        style={styles.input}
-        value={code}
-        onChangeText={setCode}
-        keyboardType="numeric"
-      />
+        <TextInput
+          style={styles.input}
+          placeholder="Nhập mã xác thực"
+          value={code}
+          onChangeText={setCode}
+          keyboardType="default"
+          maxLength={8}
+          autoCapitalize="none"
+        />
 
-      <TouchableOpacity onPress={handleVerify}>
-        <Text style={styles.loginBtn}>Xác minh</Text>
-      </TouchableOpacity>
-    </View>
+        <TouchableOpacity
+          style={[styles.button, loading && { opacity: 0.7 }]}
+          onPress={handleVerify}
+          disabled={loading}
+        >
+          {loading ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.buttonText}>Xác nhận</Text>
+          )}
+        </TouchableOpacity>
+      </View>
+    </TouchableWithoutFeedback>
   );
-};
-
-export default VerifyScreen;
+}

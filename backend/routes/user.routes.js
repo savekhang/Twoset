@@ -10,5 +10,7 @@ router.post('/nearby', verifyToken, userController.getNearbyUsers);
 router.get('/userProfile/:id', verifyToken, userController.getUserProfile);
 router.post('/update-avatar', verifyToken, userController.updateAvatar);
 router.post('/add-album-photo', verifyToken, userController.addPhoto)
+router.get("/random", verifyToken, userController.getRandomUser);
+router.get("/swipe-premium", verifyToken, userController.getPremiumMatches);
 
 module.exports = router;

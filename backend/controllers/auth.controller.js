@@ -155,21 +155,22 @@ exports.login = async (req, res) => {
     // Calculate age
     const age = user.birthdate ? dayjs().diff(dayjs(user.birthdate), 'year') : null;
 
-    const token = jwt.sign({ id: user.id, email: user.email, isPremium: !!user.is_premium }, process.env.JWT_SECRET, { expiresIn: '1d' });
+    const token = jwt.sign({ id: user.id, email: user.email, isPremium: !!user.is_premium, gender: user.gender }, process.env.JWT_SECRET, { expiresIn: '1d' });
 
     return res.json({
-      message: 'Login successful',
-      token,
-      user: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        avatar_url: user.avatar_url,
-        location: user.location_name,
-        isPremium: !!user.is_premium,
-        age,
-        interests: user.interest_names ? user.interest_names.split(',') : []
-      }
+        message: 'Login successful',
+        token,
+        user: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          avatar_url: user.avatar_url,
+          location: user.location_name,
+          isPremium: !!user.is_premium,
+          gender: user.gender,   // 👈 thêm gender
+          age,
+          interests: user.interest_names ? user.interest_names.split(',') : []
+        }
     });
   } catch (err) {
     console.error('Login error:', err.message);
@@ -233,7 +234,9 @@ exports.forgotPassword = async (req, res) => {
       text: `Mã đặt lại mật khẩu của bạn là: ${resetCode}`
     });
 
-    res.json({ message: 'Reset code sent to your email' });
+    res.json({
+      success: true,
+      message: 'Reset code sent to your email' });
   } catch (err) {
     console.error('Forgot password error:', err.message);
     res.status(500).json({ message: 'Server error', error: err.message });

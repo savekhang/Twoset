@@ -88,42 +88,15 @@ exports.deleteAllNotifications = async (req, res) => {
 };
 
 
-// // Đánh dấu đã đọc một thông báo
-// exports.markAsRead = async (req, res) => {
-//   try {
-//     const userId = req.user.id;
-//     const notificationId = req.params.id;
+// Đánh dấu tất cả là đã đọc
+exports.markAllAsRead = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    await db.query('UPDATE notifications SET is_read = 1 WHERE user_id = ?', [userId]);
+    res.json({ success: true, message: 'Tất cả thông báo đã được đánh dấu là đã đọc.' });
+  } catch (err) {
+    console.error('Lỗi cập nhật thông báo:', err);
+    res.status(500).json({ success: false, message: 'Lỗi server.' });
+  }
+};
 
-//     // Kiểm tra quyền sở hữu
-//     const [rows] = await db.query(
-//       'SELECT * FROM notifications WHERE id = ? AND user_id = ?',
-//       [notificationId, userId]
-//     );
-
-//     if (rows.length === 0) {
-//       return res.status(404).json({ message: 'Thông báo không tồn tại hoặc không thuộc về bạn.' });
-//     }
-
-//     await db.query(
-//       'UPDATE notifications SET is_read = true WHERE id = ?',
-//       [notificationId]
-//     );
-
-//     res.json({ message: 'Đã đánh dấu là đã đọc.' });
-//   } catch (err) {
-//     console.error('Lỗi cập nhật thông báo:', err);
-//     res.status(500).json({ message: 'Lỗi server khi đánh dấu đã đọc.' });
-//   }
-// };
-
-// // Đánh dấu tất cả là đã đọc
-// exports.markAllAsRead = async (req, res) => {
-//   try {
-//     const userId = req.user.id;
-//     await db.query('UPDATE notifications SET is_read = true WHERE user_id = ?', [userId]);
-//     res.json({ message: 'Tất cả thông báo đã được đánh dấu là đã đọc.' });
-//   } catch (err) {
-//     console.error('Lỗi cập nhật thông báo:', err);
-//     res.status(500).json({ message: 'Lỗi server.' });
-//   }
-// };
