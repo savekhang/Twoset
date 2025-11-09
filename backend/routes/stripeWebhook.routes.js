@@ -3,9 +3,9 @@ const router = express.Router();
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
-// Route này đang mount tại `/api/payments/webhook`, nên path ở đây chỉ là '/'
+// Route này đang mount tại `/api/payments/webhook`
 router.post(
-  '/', // ✅ Đúng: Vì bạn đã mount từ ngoài vào
+  '/', // mount từ ngoài vào
   express.raw({ type: 'application/json' }),
   (req, res) => {
     const sig = req.headers['stripe-signature'];

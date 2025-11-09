@@ -20,15 +20,20 @@ const LoginScreen = () => {
       });
 
       const { token, user } = res.data;
-      await AsyncStorage.setItem('token', token);
 
-      Alert.alert('Success', `Welcome back, ${user.name || user.email}`);
-      navigation.navigate('Home');
+      // ✅ Lưu cả token và thông tin user vào AsyncStorage
+      await AsyncStorage.setItem("token", token);
+      await AsyncStorage.setItem("user", JSON.stringify(user));
+
+      console.log("✅ Đăng nhập thành công:", user);
+
+      Alert.alert("Success", `Welcome back, ${user.name || user.email}`);
+      navigation.navigate("Home");
     } catch (err) {
-      console.error('❌ Login error:', err.response?.data || err.message);
+      console.error("❌ Login error:", err.response?.data || err.message);
       Alert.alert(
-        'Login Failed',
-        err.response?.data?.message || 'Something went wrong'
+        "Login Failed",
+        err.response?.data?.message || "Something went wrong"
       );
     }
   };
@@ -63,7 +68,7 @@ const LoginScreen = () => {
         <Text style={styles.createAccount}>Create account</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity onPress={() => navigation.navigate('ForgotPassword')}>
+      <TouchableOpacity onPress={() => navigation.navigate('Forgot')}>
         <Text style={styles.forgot}>forgot password</Text>
       </TouchableOpacity>
     </View>

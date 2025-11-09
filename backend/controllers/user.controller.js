@@ -142,52 +142,50 @@
 
   // người dùng trong phạm vi 10km
   exports.getNearbyUsers = async (req, res) => {
-    try {
-      const currentUserId = req.user.id;
+  try {
+    const currentUserId = req.user.id; // user hiện tại
+    const { latitude, longitude } = req.body;
 
-      // Lấy vị trí hiện tại của user đang đăng nhập
-      const [[currentUser]] = await db.query(
-        `SELECT latitude, longitude FROM users WHERE id = ?`,
-        [currentUserId]
-      );
-
-      if (!currentUser || currentUser.latitude == null || currentUser.longitude == null) {
-        return res.status(400).json({ message: 'Your location is not set' });
-      }
-
-      const { latitude, longitude } = currentUser;
-
-      // Tính khoảng cách giữa người dùng hiện tại và các người dùng khác bằng công thức Haversine
-      const query = `
-        SELECT 
-          u.id, u.name, u.avatar_url, u.latitude, u.longitude,
-          (
-            6371 * acos(
-              cos(radians(?)) *
-              cos(radians(u.latitude)) *
-              cos(radians(u.longitude) - radians(?)) +
-              sin(radians(?)) *
-              sin(radians(u.latitude))
-            )
-          ) AS distance
-        FROM users u
-        WHERE u.id != ? AND u.latitude IS NOT NULL AND u.longitude IS NOT NULL
-        HAVING distance <= 10
-        ORDER BY distance ASC
-      `;
-
-      const [rows] = await db.query(query, [latitude, longitude, latitude, currentUserId]);
-
-      res.status(200).json({
-        message: 'Nearby users fetched successfully',
-        users: rows
-      });
-
-    } catch (err) {
-      console.error('Nearby users error:', err);
-      res.status(500).json({ message: 'Server error', error: err.message });
+    if (latitude == null || longitude == null) {
+      return res.status(400).json({ message: "Latitude và longitude bắt buộc" });
     }
-  };
+
+    // Cập nhật vị trí của chính user hiện tại
+    await db.query(
+      `UPDATE users SET latitude = ?, longitude = ? WHERE id = ?`,
+      [latitude, longitude, currentUserId]
+    );
+
+    // Lấy danh sách user khác trong bán kính 10km
+    const query = `
+      SELECT 
+        u.id, u.name, u.avatar_url, u.latitude, u.longitude,
+        (
+          6371 * acos(
+            cos(radians(?)) *
+            cos(radians(u.latitude)) *
+            cos(radians(u.longitude) - radians(?)) +
+            sin(radians(?)) *
+            sin(radians(u.latitude))
+          )
+        ) AS distance
+      FROM users u
+      WHERE u.id != ? AND u.latitude IS NOT NULL AND u.longitude IS NOT NULL
+      HAVING distance <= 10
+      ORDER BY distance ASC
+    `;
+    const [rows] = await db.query(query, [latitude, longitude, latitude, currentUserId]);
+
+    res.status(200).json({
+      message: "Nearby users fetched successfully",
+      users: rows
+    });
+
+  } catch (err) {
+    console.error("Nearby users error:", err);
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
 
   exports.getUserProfile = async (req, res) => {
     const targetUserId = parseInt(req.params.id);
@@ -199,6 +197,7 @@
         SELECT 
           u.id, u.name, u.avatar_url, u.bio, u.gender, u.birthdate,
           TIMESTAMPDIFF(YEAR, u.birthdate, CURDATE()) AS age,
+          u.is_premium, 
           l.name AS location
         FROM users u
         LEFT JOIN locations l ON u.location_id = l.id
@@ -301,6 +300,182 @@ exports.addPhoto = async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 };
+
+// controllers/user.controller.js
+exports.getRandomUser = async (req, res) => {
+  try {
+    const currentUserId = req.user.id;
+    const currentGender = req.user.gender; // lấy từ token
+
+    let targetGender = null;
+    if (currentGender === "male") targetGender = "female";
+    else if (currentGender === "female") targetGender = "male";
+    else if (currentGender === "other") targetGender = "other";
+
+    let query = `
+      SELECT 
+        u.id, u.name, u.avatar_url, u.bio,
+        TIMESTAMPDIFF(YEAR, u.birthdate, CURDATE()) AS age,
+        l.name AS location
+      FROM users u
+      LEFT JOIN locations l ON u.location_id = l.id
+      WHERE 
+        u.id != ? 
+        AND u.id NOT IN (SELECT liked_id FROM likes WHERE liker_id = ?)  -- 👈 loại bỏ user đã like
+    `;
+
+    const params = [currentUserId, currentUserId];
+
+    if (targetGender) {
+      query += ` AND u.gender = ?`;
+      params.push(targetGender);
+    }
+
+    query += ` ORDER BY RAND() LIMIT 1`;
+
+    const [rows] = await db.query(query, params);
+
+    // fallback nếu không tìm thấy user phù hợp gender
+    if (rows.length === 0) {
+      const [fallback] = await db.query(
+        `
+        SELECT 
+          u.id, u.name, u.avatar_url, u.bio,
+          TIMESTAMPDIFF(YEAR, u.birthdate, CURDATE()) AS age,
+          l.name AS location
+        FROM users u
+        LEFT JOIN locations l ON u.location_id = l.id
+        WHERE 
+          u.id != ? 
+          AND u.id NOT IN (SELECT liked_id FROM likes WHERE liker_id = ?)  -- 👈 vẫn loại bỏ user đã like
+        ORDER BY RAND()
+        LIMIT 1
+        `,
+        [currentUserId, currentUserId]
+      );
+
+      if (fallback.length === 0) {
+        return res.status(404).json({ message: "No users found at all" });
+      }
+
+      return res.json({
+        message: "Random user fetched successfully (fallback)",
+        user: fallback[0],
+      });
+    }
+
+    res.json({
+      message: "Random user fetched successfully",
+      user: rows[0],
+    });
+  } catch (err) {
+    console.error("Get random user error:", err);
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
+
+function calculateAge(birthdate) {
+  const birth = new Date(birthdate);
+  const today = new Date();
+  let age = today.getFullYear() - birth.getFullYear();
+  const m = today.getMonth() - birth.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+  return age;
+}
+
+exports.getPremiumMatches = async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    // 1️⃣ Lấy thông tin user hiện tại
+    const [[currentUser]] = await db.query(
+      `SELECT id, gender, birthdate FROM users WHERE id = ?`,
+      [userId]
+    );
+    if (!currentUser) return res.status(404).json({ message: "User not found" });
+
+    const currentAge = calculateAge(currentUser.birthdate);
+    const oppositeGender =
+      currentUser.gender === "male"
+        ? "female"
+        : currentUser.gender === "female"
+        ? "male"
+        : "other";
+
+    // 2️⃣ Lấy danh sách user khác giới
+    const [candidates] = await db.query(
+      `SELECT u.id, u.name, u.avatar_url, u.bio, u.gender, u.birthdate
+       FROM users u
+       WHERE u.gender = ? AND u.id != ?`,
+      [oppositeGender, userId]
+    );
+
+    // 3️⃣ Lấy danh sách sở thích người hiện tại
+    const [myInterests] = await db.query(
+      `SELECT interest_id FROM user_interests WHERE user_id = ?`,
+      [userId]
+    );
+    const myInterestIds = myInterests.map((i) => i.interest_id);
+
+    // 4️⃣ Tính % tương thích
+    const results = [];
+for (const u of candidates) {
+  // Số sở thích trùng nhau
+  const [[shared]] = await db.query(
+    `SELECT COUNT(*) AS sharedCount
+     FROM user_interests ui
+     WHERE ui.user_id = ? AND ui.interest_id IN (?)`,
+    [u.id, myInterestIds.length ? myInterestIds : [0]]
+  );
+
+  // Tổng số sở thích của mỗi người
+  const [[myCount]] = await db.query(
+    `SELECT COUNT(*) AS count FROM user_interests WHERE user_id = ?`,
+    [userId]
+  );
+  const [[theirCount]] = await db.query(
+    `SELECT COUNT(*) AS count FROM user_interests WHERE user_id = ?`,
+    [u.id]
+  );
+
+  const minTotal = Math.max(1, Math.min(myCount.count, theirCount.count));
+
+  const age = calculateAge(u.birthdate);
+  const ageDiff = Math.abs(age - currentAge);
+
+  // Tính điểm từng phần
+  const interestScore = shared.sharedCount / minTotal; // sở thích trùng/tổng nhỏ hơn
+  const ageScore = Math.max(0, 1 - ageDiff / 20); // tuổi càng lệch điểm càng giảm
+
+  // 70% sở thích + 30% tuổi
+  const compatibilityPercent = Math.round(
+    (interestScore * 0.7 + ageScore * 0.3) * 100
+  );
+
+  results.push({
+    ...u,
+    sharedInterests: shared.sharedCount,
+    ageDiff,
+    compatibility: compatibilityPercent,
+  });
+}
+
+    // 5️⃣ Sắp xếp giảm dần theo % tương thích
+    results.sort((a, b) => b.compatibility - a.compatibility);
+
+    res.json({
+      success: true,
+      users: results,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+
+
+
 
 
 

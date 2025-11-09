@@ -27,6 +27,7 @@ export default function RegisterScreen() {
   const [openGender, setOpenGender] = useState(false);
 
   useEffect(() => {
+    console.log('API_BASE_URL:', API_BASE_URL);
     const fetchData = async () => {
       try {
         const [locRes, intRes] = await Promise.all([
