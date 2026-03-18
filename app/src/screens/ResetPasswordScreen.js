@@ -74,6 +74,7 @@ export default function ResetPasswordScreen() {
       <TextInput
         style={styles.input}
         placeholder="Nhập mã PIN (đã gửi email)"
+        placeholderTextColor="#999"
         value={resetCode}
         onChangeText={setResetCode}
         autoCapitalize="none"
@@ -82,6 +83,7 @@ export default function ResetPasswordScreen() {
       <TextInput
         style={styles.input}
         placeholder="Nhập mật khẩu mới"
+        placeholderTextColor="#999"
         value={newPassword}
         onChangeText={setNewPassword}
         secureTextEntry

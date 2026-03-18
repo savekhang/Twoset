@@ -138,8 +138,19 @@ export default function UserProfileScreen({ route, navigation }) {
         </View>
 
         <Text style={styles.name}>
-          {user.name}, {user.age || "?"}
-        </Text>
+  {user.name}, {user.age || "?"}
+</Text>
+
+{/* ✅ Thêm dòng hiển thị Gender ngay đây */}
+<Text style={styles.gender}>
+  {user.gender === "male"
+    ? "Nam"
+    : user.gender === "female"
+    ? "Nữ"
+    : "Không xác định"}
+</Text>
+
+       
         <Text style={styles.bio}>{user.bio || "Chưa có tiểu sử."}</Text>
         <Text style={styles.location}>{user.location || "Chưa có địa chỉ"}</Text>
 

@@ -99,7 +99,7 @@ exports.getGroupMessages = async (req, res) => {
   try {
     const { chat_id } = req.params;
     const [messages] = await db.query(
-      `SELECT gm.id, gm.content, gm.sent_at, u.name AS sender_name, u.avatar_url
+      `SELECT gm.id, gm.content, gm.sent_at, gm.sender_id, u.name AS sender_name, u.avatar_url
        FROM group_messages gm
        JOIN users u ON gm.sender_id = u.id
        WHERE gm.chat_id = ?
@@ -109,6 +109,43 @@ exports.getGroupMessages = async (req, res) => {
     res.json({ messages });
   } catch (err) {
     console.error("Get group messages error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+
+// Lấy danh sách thành viên phòng
+exports.getGroupMembers = async (req, res) => {
+  const { chat_id } = req.params;
+  try {
+    const [members] = await db.query(`
+      SELECT u.id AS user_id, u.name, u.avatar_url
+      FROM group_chat_members gcm
+      JOIN users u ON u.id = gcm.user_id
+      WHERE gcm.chat_id = ?
+    `, [chat_id]);
+
+    res.json({ members });
+  } catch (err) {
+    console.error("Get group members error:", err);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+// controllers/groupChat.controller.js
+exports.getGroupInfo = async (req, res) => {
+  try {
+    const { chat_id } = req.params;
+    const [[chat]] = await db.query(
+      `SELECT id, name, password FROM group_chats WHERE id = ?`,
+      [chat_id]
+    );
+
+    if (!chat) return res.status(404).json({ message: "Phòng không tồn tại" });
+
+    res.json({ chat });
+  } catch (err) {
+    console.error("Get group info error:", err);
     res.status(500).json({ message: "Server error" });
   }
 };

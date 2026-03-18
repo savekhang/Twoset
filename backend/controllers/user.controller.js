@@ -253,6 +253,31 @@
     }
   };
     //up load avatar
+    exports.updateAvatarNoToken = async (req, res) => {
+    const { email, avatar_url } = req.body;
+
+    if (!email || !avatar_url) {
+        return res.status(400).json({ message: "Missing email or avatar URL" });
+    }
+
+    try {
+        const [result] = await db.query(
+            "UPDATE users SET avatar_url = ? WHERE email = ?",
+            [avatar_url, email]
+        );
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ message: "User not found" });
+        }
+
+        res.json({ message: "Avatar updated successfully (no token)" });
+    } catch (err) {
+        console.error("Avatar update error:", err);
+        res.status(500).json({ message: "Server error" });
+    }
+};
+
+  //update-avatar
     exports.updateAvatar = async (req, res) => {
     const { avatar_url } = req.body;
     const userId = req.user.id;
@@ -321,7 +346,7 @@ exports.getRandomUser = async (req, res) => {
       LEFT JOIN locations l ON u.location_id = l.id
       WHERE 
         u.id != ? 
-        AND u.id NOT IN (SELECT liked_id FROM likes WHERE liker_id = ?)  -- 👈 loại bỏ user đã like
+        AND u.id NOT IN (SELECT liked_id FROM likes WHERE liker_id = ?) 
     `;
 
     const params = [currentUserId, currentUserId];
@@ -347,7 +372,7 @@ exports.getRandomUser = async (req, res) => {
         LEFT JOIN locations l ON u.location_id = l.id
         WHERE 
           u.id != ? 
-          AND u.id NOT IN (SELECT liked_id FROM likes WHERE liker_id = ?)  -- 👈 vẫn loại bỏ user đã like
+          AND u.id NOT IN (SELECT liked_id FROM likes WHERE liker_id = ?) 
         ORDER BY RAND()
         LIMIT 1
         `,
@@ -470,6 +495,72 @@ for (const u of candidates) {
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Server error" });
+  }
+};
+
+// Cập nhật thông tin cá nhân
+exports.updateProfile = async (req, res) => {
+  const userId = req.user.id;
+  const {
+    name,
+    gender,
+    birthdate,
+    bio,
+    location_id,
+    password,
+    interests // mảng [1,2,5,...]
+  } = req.body;
+
+  try {
+    const fields = [];
+    const values = [];
+
+    if (name) {
+      fields.push("name = ?");
+      values.push(name);
+    }
+    if (gender) {
+      fields.push("gender = ?");
+      values.push(gender);
+    }
+    if (birthdate) {
+      fields.push("birthdate = ?");
+      values.push(birthdate);
+    }
+    if (bio) {
+      fields.push("bio = ?");
+      values.push(bio);
+    }
+    if (location_id) {
+      fields.push("location_id = ?");
+      values.push(location_id);
+    }
+    if (password) {
+      const hashed = await bcrypt.hash(password, 10);
+      fields.push("password = ?");
+      values.push(hashed);
+    }
+
+    if (fields.length > 0) {
+      const sql = `UPDATE users SET ${fields.join(", ")} WHERE id = ?`;
+      values.push(userId);
+      await db.query(sql, values);
+    }
+
+    // Cập nhật sở thích nếu có
+    if (interests && Array.isArray(interests)) {
+      // Xóa sở thích cũ
+      await db.query("DELETE FROM user_interests WHERE user_id = ?", [userId]);
+      if (interests.length > 0) {
+        const rows = interests.map((i) => [userId, i]);
+        await db.query("INSERT INTO user_interests (user_id, interest_id) VALUES ?", [rows]);
+      }
+    }
+
+    res.json({ message: "Profile updated successfully" });
+  } catch (err) {
+    console.error("Update profile error:", err);
+    res.status(500).json({ message: "Server error", error: err.message });
   }
 };
 
