@@ -20,6 +20,14 @@ import MessageScreen from '../screens/MessageScreen';
 import DetailMessScreen from '../screens/DetailMessScreen';
 import NearbyMapScreen from '../screens/NearbyMapScreen';
 import SwipePremiumScreen from '../screens/SwipePremiumScreen';
+import GroupChatListScreen from '../screens/GroupChatListScreen';
+import GroupChatScreen from '../screens/GroupChatScreen';
+import JoinGroupScreen from '../screens/JoinGroupScreen';
+import GroupInterestScreen from '../screens/GroupInterestScreen';
+import CreateGroupScreen from '../screens/CreateGroupScreen';
+import SettingScreen from '../screens/SettingScreen';
+import InteractionHistoryScreen from '../screens/InteractionHistoryScreen';
+import EditProfileScreen from '../screens/EditProfileScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -38,6 +46,9 @@ const AppNavigator = () => {
       <Stack.Screen name="Success" component={SuccessScreen} />
       <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
       <Stack.Screen name="SwipeScreen" component={SwipeScreen} />
+      <Stack.Screen name="Settings" component={SettingScreen} />
+      <Stack.Screen name="InteractionHistory" component={InteractionHistoryScreen} />
+       <Stack.Screen name="EditProfile" component={EditProfileScreen} />
       <Stack.Screen
       name="SwipeRandom"
       component={SwipeRandomScreen}
@@ -54,6 +65,25 @@ const AppNavigator = () => {
       <Stack.Screen name="DetailMess" component={DetailMessScreen} />
       <Stack.Screen name="Nearby" component={NearbyMapScreen} />
       <Stack.Screen name="SwipePremium" component={SwipePremiumScreen} />
+      <Stack.Screen name="GrChat" component={GroupChatScreen} />
+      <Stack.Screen name="CreateGroup" component={CreateGroupScreen} />
+      <Stack.Screen 
+        name="GrChatIn" 
+        component={GroupInterestScreen} 
+        options={{ headerShown: true }}
+      />
+
+      <Stack.Screen 
+        name="GrList" 
+        component={GroupChatListScreen} 
+        options={{ headerShown: true }}
+      />
+
+      <Stack.Screen 
+        name="GrJoin" 
+        component={JoinGroupScreen}
+        options={{ headerShown: true }}
+      />
     </Stack.Navigator>
   );
 };

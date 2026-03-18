@@ -271,3 +271,86 @@ exports.resetPassword = async (req, res) => {
     res.status(500).json({ message: 'Server error', error: err.message });
   }
 };
+
+// ========== LOGIN AFTER VERIFY ==========
+exports.loginAfterVerify = async (req, res) => {
+  const { email } = req.body;
+
+  if (!email) {
+    return res.status(400).json({ message: "Email is required" });
+  }
+
+  try {
+    // 1) Fetch user
+    const [rows] = await db.query(`
+      SELECT u.*, l.name AS location_name,
+             GROUP_CONCAT(i.name) AS interest_names
+      FROM users u
+      LEFT JOIN locations l ON u.location_id = l.id
+      LEFT JOIN user_interests ui ON u.id = ui.user_id
+      LEFT JOIN interests i ON ui.interest_id = i.id
+      WHERE u.email = ?
+      GROUP BY u.id
+    `, [email]);
+
+    if (rows.length === 0) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const user = rows[0];
+
+    // 2) Must be verified first
+    if (!user.is_verified) {
+      return res.status(400).json({ message: "Please verify your account first" });
+    }
+
+    // 3) Update online status
+    await db.query(
+      "UPDATE users SET is_online = 1, last_seen = NOW() WHERE id = ?",
+      [user.id]
+    );
+
+    // 4) Calculate age
+    const age = user.birthdate
+      ? dayjs().diff(dayjs(user.birthdate), "year")
+      : null;
+
+    // 5) Generate JWT token
+    const token = jwt.sign(
+      {
+        id: user.id,
+        email: user.email,
+        isPremium: !!user.is_premium,
+        gender: user.gender
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: "7d" }
+    );
+
+    // 6) Return same style as login API
+    return res.json({
+      message: "Login after verify successful",
+      token,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        avatar_url: user.avatar_url,
+        location: user.location_name,
+        isPremium: !!user.is_premium,
+        gender: user.gender,
+        age,
+        interests: user.interest_names
+          ? user.interest_names.split(",")
+          : []
+      }
+    });
+
+  } catch (err) {
+    console.error("Login-after-verify error:", err.message);
+    return res.status(500).json({
+      message: "Server error",
+      error: err.message
+    });
+  }
+};

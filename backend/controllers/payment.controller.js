@@ -1,4 +1,3 @@
-// controllers/payment.controller.js
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const db = require('../config/db');
 
@@ -7,7 +6,7 @@ const db = require('../config/db');
  */
 exports.createCheckoutSession = async (req, res) => {
   try {
-    const amount = 4.99; // Giá cố định $4.99
+    const amount = 4.99; // USD
 
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
@@ -16,7 +15,7 @@ exports.createCheckoutSession = async (req, res) => {
           price_data: {
             currency: 'usd',
             product_data: { name: 'Twoset Premium Upgrade' },
-            unit_amount: Math.round(amount * 100), // $4.99 = 499 cents
+            unit_amount: Math.round(amount * 100), // cents
           },
           quantity: 1,
         },
@@ -24,14 +23,12 @@ exports.createCheckoutSession = async (req, res) => {
       mode: 'payment',
       success_url: `${process.env.FRONTEND_URL_WEB}/success.html`,
       cancel_url: `${process.env.FRONTEND_URL_WEB}/cancel.html`,
-      metadata: {
-        userId: req.user.id,
-      },
+      metadata: { userId: req.user.id },
     });
 
     res.json({ url: session.url });
   } catch (error) {
-    console.error('Stripe createCheckoutSession error:', error);
+    console.error('❌ createCheckoutSession error:', error);
     res.status(500).json({ error: error.message });
   }
 };
@@ -44,54 +41,58 @@ exports.handleWebhook = async (req, res) => {
 
   let event;
   try {
-    event = stripe.webhooks.constructEvent(
-      req.body,
-      sig,
-      process.env.STRIPE_WEBHOOK_SECRET
-    );
+    event = stripe.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET);
+    console.log('✅ Webhook verified:', event.type);
   } catch (err) {
-    console.error('⚠️ Webhook signature verification failed:', err.message);
+    console.error('❌ Webhook signature verification failed:', err.message);
     return res.sendStatus(400);
   }
 
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object;
-    const userId = session.metadata.userId;
+    console.log('🔔 checkout.session.completed event:', session);
+
+    const userId = session.metadata?.userId;
+    if (!userId) {
+      console.error('❌ userId missing in metadata');
+      return res.sendStatus(400);
+    }
 
     try {
-      // 1. Nâng cấp user thành Premium
-      await db.query(
-        'UPDATE users SET is_premium = 1 WHERE id = ?',
-        [userId]
-      );
+      // 1️⃣ Upgrade user
+      await db.query('UPDATE users SET is_premium = 1 WHERE id = ?', [userId]);
+      console.log(`[DB] users updated for user ${userId}`);
 
-      // 2. Xóa hoặc set NULL trong super_like_usage để không giới hạn
-      await db.query(
-        'UPDATE super_like_usage SET count = NULL WHERE user_id = ?',
-        [userId]
-      );
+      // 2️⃣ Unlimited super_like_usage
+      await db.query('UPDATE super_like_usage SET count = NULL WHERE user_id = ?', [userId]);
+      console.log(`[DB] super_like_usage updated for user ${userId}`);
 
-      // 3. Ghi vào bảng payments
+      // 3️⃣ Insert payment record
       await db.query(
-        'INSERT INTO payments (user_id, amount, status, created_at) VALUES (?, ?, ?, NOW())',
-        [userId, 4.99, 'success']
+        'INSERT INTO payments (user_id, amount, order_id, transaction_no, pay_date, status) VALUES (?, ?, ?, ?, NOW(), ?)',
+        [userId, session.amount_total / 100, session.id, session.payment_intent, 'success']
       );
+      console.log(`[DB] payment record inserted for user ${userId}`);
 
-      // 4. Thêm thông báo vào bảng notifications (không dùng socket)
+      // 4️⃣ Insert notification
       await db.query(
-                'INSERT INTO notifications (user_id, message, type, is_read, metadata, created_at) VALUES (?, ?, ?, ?, ?, NOW())',
-                [
-                    userId,
-                    'Bạn đã nâng cấp tài khoản Premium thành công!',
-                    'system',
-                    0,
-                    JSON.stringify({ plan: 'premium', amount: 4.99 })
-                ]
-            );
-            console.log(`[DB] Inserted premium upgrade notification for user ${userId}`);
+        'INSERT INTO notifications (user_id, message, type, metadata, is_read, created_at) VALUES (?, ?, ?, ?, 0, NOW())',
+        [
+          userId,
+          'Bạn đã nâng cấp tài khoản Premium thành công! 🎉',
+          'system',
+          JSON.stringify({ plan: 'premium', amount: session.amount_total / 100 }),
+        ]
+      );
+      console.log(`[DB] notification inserted for user ${userId}`);
+
+      console.log(`✅ Premium upgrade processed successfully for user ${userId}`);
     } catch (dbErr) {
-      console.error('❌ Lỗi cập nhật DB:', dbErr);
+      console.error('❌ DB error:', dbErr);
+      return res.sendStatus(500);
     }
+  } else {
+    console.log(`📌 Unhandled event type: ${event.type}`);
   }
 
   res.sendStatus(200);

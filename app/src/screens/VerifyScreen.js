@@ -32,21 +32,28 @@ export default function VerifyScreen({ route, navigation }) {
     try {
       setLoading(true);
 
-      // ✅ Gọi đúng API xác thực mã (truyền đúng key: code)
+      // Gọi đúng API xác thực mã
       const res = await axios.post(`${API_BASE_URL}/auth/verify`, {
         email,
-        code, // backend yêu cầu 'code'
+        code,
       });
 
-      // ✅ Kiểm tra phản hồi từ backend
       const message = res.data?.message || '';
+
       if (message.toLowerCase().includes('success')) {
         Alert.alert('Thành công', 'Tài khoản của bạn đã được xác thực!', [
-          { text: 'Đăng nhập', onPress: () => navigation.navigate('Login') },
+          { 
+            text: 'Tiếp tục', 
+            onPress: () =>
+              navigation.replace('UploadAvatar', {
+                email: email,     // 🔥 TRUYỀN EMAIL SANG UPLOADAVATAR SCREEN
+              })
+          },
         ]);
       } else {
         Alert.alert('Lỗi', message || 'Mã xác thực không hợp lệ.');
       }
+
     } catch (err) {
       console.error('Verify error:', err);
       Alert.alert(
@@ -69,6 +76,7 @@ export default function VerifyScreen({ route, navigation }) {
         <TextInput
           style={styles.input}
           placeholder="Nhập mã xác thực"
+          placeholderTextColor="#999"
           value={code}
           onChangeText={setCode}
           keyboardType="default"

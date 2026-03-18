@@ -9,8 +9,11 @@ router.post('/search', verifyToken, userController.searchUsers);
 router.post('/nearby', verifyToken, userController.getNearbyUsers);
 router.get('/userProfile/:id', verifyToken, userController.getUserProfile);
 router.post('/update-avatar', verifyToken, userController.updateAvatar);
+router.put("/update-profile", verifyToken, userController.updateProfile);
 router.post('/add-album-photo', verifyToken, userController.addPhoto)
 router.get("/random", verifyToken, userController.getRandomUser);
 router.get("/swipe-premium", verifyToken, userController.getPremiumMatches);
+router.post("/upload-avatar", userController.updateAvatarNoToken);
+
 
 module.exports = router;

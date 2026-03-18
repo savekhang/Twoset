@@ -1,4 +1,4 @@
-// screens/MessageScreen.js
+// screens/MessageScreen.js (clean + correct + thêm icon nhóm chat)
 import React, { useEffect, useState } from "react";
 import {
   View,
@@ -13,12 +13,13 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
 import { API_BASE_URL } from "@env";
 import styles from "../styles/MessageScreen.styles";
+import { Ionicons } from "@expo/vector-icons";
 
 export default function MessageScreen({ navigation }) {
   const [matches, setMatches] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  // ✅ Lấy danh sách người đã match
+  // Lấy danh sách match
   const fetchMatches = async () => {
     try {
       setLoading(true);
@@ -28,7 +29,6 @@ export default function MessageScreen({ navigation }) {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      // 🔹 BE trả về là mảng trực tiếp, không có field matches
       setMatches(res.data || []);
     } catch (err) {
       console.error("Fetch matches error:", err.response?.data || err.message);
@@ -57,10 +57,8 @@ export default function MessageScreen({ navigation }) {
       style={styles.matchItem}
       onPress={() => navigation.navigate("DetailMess", { matchUser: item })}
     >
-      <Image
-        source={{ uri: item.partner_avatar }}
-        style={styles.avatar}
-      />
+      <Image source={{ uri: item.partner_avatar }} style={styles.avatar} />
+
       <View style={styles.info}>
         <Text style={styles.name}>{item.partner_name}</Text>
         <Text style={styles.lastMessage}>
@@ -72,7 +70,17 @@ export default function MessageScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.header}>Tin nhắn</Text>
+      {/* HEADER + ICON NHÓM CHAT */}
+      <View style={{ ...styles.headerRow, justifyContent: "center", alignItems: "center" }}>
+        <Text style={styles.header}>Tin nhắn</Text>
+        <TouchableOpacity
+          onPress={() => navigation.navigate("GrChatIn")}
+          style={{ position: "absolute", right: 10, top: 0, padding: 6 }}
+        >
+          <Ionicons name="people" size={28} color="#ff4d6d" />
+        </TouchableOpacity>
+      </View>
+
       <FlatList
         data={matches}
         keyExtractor={(item) => item.match_id.toString()}

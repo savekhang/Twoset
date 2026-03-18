@@ -32,7 +32,12 @@ export default function SwipePremiumScreen({ navigation }) {
         timeout: 10000,
       });
 
-      setUsers(Array.isArray(res.data.users) ? res.data.users : []);
+      let list = Array.isArray(res.data.users) ? res.data.users : [];
+
+      // 🔥 Sort từ cao → thấp theo compatibility
+      list.sort((a, b) => (b.compatibility ?? 0) - (a.compatibility ?? 0));
+
+      setUsers(list);
     } catch (err) {
       console.error("Fetch error:", err.response?.data || err.message || err);
       Alert.alert(
@@ -58,7 +63,6 @@ export default function SwipePremiumScreen({ navigation }) {
     fetchMatches();
   }, [fetchMatches]);
 
-  // ⚡ Hàm xem chi tiết hồ sơ
   const handleViewProfile = async (userId) => {
     try {
       setLoading(true);
@@ -77,18 +81,20 @@ export default function SwipePremiumScreen({ navigation }) {
     }
   };
 
-  const renderItem = ({ item }) => {
+  const renderItem = ({ item, index }) => {
     const avatar = item.avatar_url || "https://i.pravatar.cc/200";
     const name = item.name || "Người dùng";
     const bio = item.bio || "";
     const shared = item.sharedInterests ?? 0;
     const ageDiff = item.ageDiff ?? "-";
 
+    const isTop1 = index === 0; // 🔥 User tương thích nhất
+
     return (
       <TouchableOpacity
-        activeOpacity={0.85}
-        style={styles.card}
-        onPress={() => handleViewProfile(item.id)} // 🔥 Gọi xem chi tiết
+        activeOpacity={0.9}
+        style={[styles.card, isTop1 && styles.cardTop1]}
+        onPress={() => handleViewProfile(item.id)}
       >
         <Image source={{ uri: avatar }} style={styles.avatar} />
 
@@ -97,7 +103,10 @@ export default function SwipePremiumScreen({ navigation }) {
             <Text style={styles.name} numberOfLines={1}>
               {name}
             </Text>
-            <Text style={styles.score}>💖 {item.compatibility ?? 0}%</Text>
+
+            <Text style={[styles.score, isTop1 && styles.scoreTop1]}>
+              💖 {item.compatibility ?? 0}%
+            </Text>
           </View>
 
           <Text style={styles.bio} numberOfLines={2}>
@@ -124,7 +133,7 @@ export default function SwipePremiumScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Kết quả tương thích cao </Text>
+      <Text style={styles.title}>Kết quả tương thích cao</Text>
 
       <FlatList
         data={users}
@@ -155,29 +164,44 @@ const AVATAR_SIZE = 72;
 const CARD_HEIGHT = 110;
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#fee1e1ff", paddingHorizontal: 14, paddingTop: 60 },
+  container: {
+    flex: 1,
+    backgroundColor: "#fee1e1ff",
+    paddingHorizontal: 14,
+    paddingTop: 60,
+  },
   title: {
-    fontSize: 20,
-    fontWeight: "700",
+    fontSize: 22,
+    fontWeight: "800",
     color: "#ff3366",
     marginBottom: 18,
     alignSelf: "center",
   },
-  listContent: { paddingBottom: 30 },
+  listContent: { paddingBottom: 40 },
+
+  // 💎 Card thường
   card: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#f7f8fa",
+    backgroundColor: "#ffffff",
     padding: CARD_PADDING,
-    borderRadius: 14,
+    borderRadius: 16,
     marginVertical: 8,
     minHeight: CARD_HEIGHT,
     elevation: 2,
     shadowColor: "#000",
-    shadowOpacity: 0.06,
-    shadowOffset: { width: 0, height: 3 },
-    shadowRadius: 6,
+    shadowOpacity: 0.08,
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 8,
   },
+
+  // 🔥 Card top 1 — tương thích cao nhất
+  cardTop1: {
+    backgroundColor: "#ffe8ee",
+    borderWidth: 1.6,
+    borderColor: "#ff3366",
+  },
+
   avatar: {
     width: AVATAR_SIZE,
     height: AVATAR_SIZE,
@@ -187,15 +211,47 @@ const styles = StyleSheet.create({
     borderColor: "#eee",
     backgroundColor: "#ddd",
   },
+
   cardContent: { flex: 1, justifyContent: "center" },
-  rowTop: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  name: { fontSize: 16, fontWeight: "700", color: "#222", maxWidth: width - AVATAR_SIZE - 80 },
-  score: { fontSize: 13, color: "#ff3366", fontWeight: "700", marginLeft: 8 },
+  rowTop: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+
+  name: {
+    fontSize: 17,
+    fontWeight: "700",
+    color: "#222",
+    maxWidth: width - AVATAR_SIZE - 80,
+  },
+
+  score: {
+    fontSize: 14,
+    color: "#ff3366",
+    fontWeight: "700",
+  },
+
+  scoreTop1: {
+    fontSize: 16,
+    fontWeight: "900",
+    color: "#ff0033",
+  },
+
   bio: { color: "#555", marginTop: 6, fontSize: 13, lineHeight: 18 },
+
   metaRow: { marginTop: 8, flexDirection: "row", alignItems: "center" },
   metaText: { color: "#888", fontSize: 12 },
-  metaDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: "#ddd", marginHorizontal: 8 },
+  metaDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: "#ddd",
+    marginHorizontal: 8,
+  },
+
   loadingWrap: { flex: 1, justifyContent: "center", alignItems: "center" },
+
   emptyContainer: { flexGrow: 1 },
   emptyBox: { flex: 1, justifyContent: "center", alignItems: "center", padding: 24 },
   emptyText: { fontSize: 16, fontWeight: "600", color: "#333", marginBottom: 6 },

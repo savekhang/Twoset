@@ -3,24 +3,32 @@ const express = require('express');
 const http = require('http');
 const cors = require('cors');
 const { Server } = require('socket.io');
-const db = require('./config/db'); // ✅ Import kết nối MySQL
+const db = require('./config/db');
+const vapeDetectRoute = require("./routes/vapeDetect");
+const path = require("path");
 
 const app = express();
 const server = http.createServer(app);
 
-// ✅ Stripe webhook raw parser phải đặt TRƯỚC express.json()
+// Stripe webhook raw parser phải đặt TRƯỚC express.json()
 app.post(
   '/api/payment/stripe/webhook',
   express.raw({ type: 'application/json' }),
   require('./controllers/payment.controller').handleWebhook
 );
 
-// ✅ Middleware
+// Middleware
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// ✅ Routes
+// Routes
+app.use("/public", express.static("public"));
+app.use(
+  "/outputs",
+  express.static(path.join(__dirname, "outputs"))
+);
+app.use("/api/detect", vapeDetectRoute);
 app.use('/api/auth', require('./routes/auth.routes'));
 app.use('/api/users', require('./routes/user.routes'));
 app.use('/api/like', require('./routes/like.routes'));
@@ -29,6 +37,9 @@ app.use('/api/mess', require('./routes/message.routes'));
 app.use('/api', require('./routes/common.routes'));
 app.use('/api/payment', require('./routes/payment.routes'));
 app.use('/api/qr', require('./routes/vietqr.routes'));
+app.use('/api/group', require('./routes/groupChat.routes'));
+app.use("/api/interaction", require('./routes/interaction.route'));
+app.use("/api", require('./routes/gift.routes'));
 
 // Cấu hình Socket.IO
 const io = new Server(server, {
@@ -47,11 +58,10 @@ io.on('connection', (socket) => {
     console.log(`✅ User ${userId} online as ${socket.id}`);
   });
 
-  // Gửi tin nhắn
+  // ---------------- 1:1 MESSAGE ---------------- //
   socket.on("sendMessage", async (data) => {
     try {
       const { match_id, sender_id, receiver_id, content } = data;
-
       if (!match_id || !sender_id || !receiver_id || !content) {
         console.warn("⚠️ Thiếu dữ liệu gửi tin nhắn:", data);
         return;
@@ -64,15 +74,13 @@ io.on('connection', (socket) => {
         [match_id, sender_id, receiver_id, content]
       );
 
-      // Lấy tin nhắn vừa lưu
       const [newMsg] = await db.query(
         `SELECT * FROM messages WHERE id = ?`,
         [result.insertId]
       );
-
       const message = newMsg[0];
 
-      // Chỉ gửi realtime cho receiver nếu online
+      // Gửi realtime cho receiver nếu online
       const receiverSocket = onlineUsers.get(receiver_id);
       if (receiverSocket) {
         io.to(receiverSocket).emit("receiveMessage", message);
@@ -80,29 +88,23 @@ io.on('connection', (socket) => {
       } else {
         console.log(`💾 Receiver ${receiver_id} offline. Tin nhắn lưu DB: ${content}`);
       }
-
     } catch (err) {
       console.error("❌ Lỗi khi xử lý tin nhắn:", err);
     }
   });
 
-  // ✅ User tham gia phòng nhóm
-  socket.on('joinGroup', async ({ chat_id, user_id }) => {
-    try {
-      socket.join(`group_${chat_id}`);
-      console.log(`👥 User ${user_id} joined group_${chat_id}`);
-    } catch (err) {
-      console.error('❌ Lỗi joinGroup:', err);
-    }
+  // ---------------- GROUP CHAT ---------------- //
+  socket.on('joinGroup', ({ chat_id, user_id }) => {
+    if (!chat_id || !user_id) return;
+    socket.join(`group_${chat_id}`);
+    console.log(`👥 User ${user_id} joined group_${chat_id}`);
   });
 
-  // ✅ Gửi tin nhắn nhóm
-  socket.on('sendGroupMessage', async (data) => {
-    try {
-      const { chat_id, sender_id, content } = data;
-      if (!chat_id || !sender_id || !content) return;
+  socket.on('sendGroupMessage', async ({ chat_id, sender_id, content }) => {
+    if (!chat_id || !sender_id || !content) return;
 
-      // Lưu vào DB
+    try {
+      // Lưu tin nhắn vào DB
       const [result] = await db.query(
         `INSERT INTO group_messages (chat_id, sender_id, content, sent_at)
          VALUES (?, ?, ?, NOW())`,
@@ -119,7 +121,9 @@ io.on('connection', (socket) => {
         [result.insertId]
       );
 
-      // Gửi realtime tới tất cả thành viên trong phòng
+      if (!newMsg) return;
+
+      // Gửi realtime tới tất cả thành viên trong room
       io.to(`group_${chat_id}`).emit('receiveGroupMessage', newMsg);
       console.log(`📢 Group ${chat_id}: ${newMsg.sender_name} → ${content}`);
     } catch (err) {
@@ -127,7 +131,7 @@ io.on('connection', (socket) => {
     }
   });
 
-  // User ngắt kết nối
+  // ---------------- DISCONNECT ---------------- //
   socket.on('disconnect', () => {
     for (let [userId, socketId] of onlineUsers.entries()) {
       if (socketId === socket.id) {
@@ -138,6 +142,7 @@ io.on('connection', (socket) => {
     }
   });
 });
+
 
 // ✅ Chạy server
 const PORT = process.env.PORT || 3000;

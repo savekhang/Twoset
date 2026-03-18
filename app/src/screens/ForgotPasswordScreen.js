@@ -44,6 +44,7 @@ export default function ForgotPasswordScreen() {
       <TextInput
         style={styles.input}
         placeholder="Nhập email của bạn"
+        placeholderTextColor="#999"
         value={email}
         onChangeText={setEmail}
         keyboardType="email-address"
