@@ -1,0 +1,82 @@
+[
+  {
+    "text": "Ủa bạn cũng ở [location] hả 😆 Chúng ta có thể gặp nhau ở đây!",
+    "tags": ["same_city"]
+  },
+  {
+    "text": "Mình thấy tụi mình có điểm chung về sở thích [interests] đó 👀",
+    "tags": ["shared_interests"]
+  },
+  {
+    "text": "Hello 👋 rất vui được match với bạn! Bạn đang làm gì vậy?",
+    "tags": ["general"]
+  },
+  {
+    "text": "Hey 👋 có vẻ chúng ta hợp đó 😆 Kể mình nghe về sở thích của bạn đi!",
+    "tags": ["general"]
+  },
+  {
+    "text": "Wow, chúng ta cùng thích [interests], thú vị quá! Bạn có gợi ý gì không?",
+    "tags": ["shared_interests"]
+  },
+  {
+    "text": "Ở [location] này có nhiều chỗ hay lắm, bạn đã thử chưa?",
+    "tags": ["same_city"]
+  },
+  {
+    "text": "Chào bạn! Mình cũng ở [location], chúng ta có thể đi chơi cùng nhau.",
+    "tags": ["same_city"]
+  },
+  {
+    "text": "Sở thích [interests] của bạn nghe hay quá, mình cũng thích thế!",
+    "tags": ["shared_interests"]
+  },
+  {
+    "text": "Hi! Rất vui khi match với bạn. Bạn có kế hoạch gì cuối tuần không?",
+    "tags": ["general"]
+  },
+  {
+    "text": "Chúng ta có nhiều điểm chung, đặc biệt là [interests]. Kể chi tiết hơn đi!",
+    "tags": ["shared_interests"]
+  },
+  {
+    "text": "Xin chào! Match với bạn thật vui. Bạn thích ăn gì?",
+    "tags": ["general"]
+  },
+  {
+    "text": "Ồ, cùng thành phố [location] rồi! Có quán nào bạn recommend không?",
+    "tags": ["same_city"]
+  },
+  {
+    "text": "Chúng ta đều thích [interests], có lẽ chúng ta có nhiều thứ chung khác nữa.",
+    "tags": ["shared_interests"]
+  },
+  {
+    "text": "Chào! Rất vui được gặp bạn qua app. Bạn có sở thích gì đặc biệt?",
+    "tags": ["general"]
+  },
+  {
+    "text": "Cùng ở [location], chúng ta có thể khám phá thành phố cùng nhau!",
+    "tags": ["same_city"]
+  },
+  {
+    "text": "Thú vị khi thấy chúng ta cùng thích [interests]. Bạn đã thử gì liên quan chưa?",
+    "tags": ["shared_interests"]
+  },
+  {
+    "text": "Hello there! Match thành công rồi nhé. Kể về bản thân đi!",
+    "tags": ["general"]
+  },
+  {
+    "text": "Ở [location] lâu chưa? Mình biết vài chỗ hay ở đây.",
+    "tags": ["same_city"]
+  },
+  {
+    "text": "Điểm chung về [interests] làm mình thấy gần gũi hơn. Bạn nghĩ sao?",
+    "tags": ["shared_interests"]
+  },
+  {
+    "text": "Hi! Rất vui khi match. Bạn đang ở đâu vậy?",
+    "tags": ["general"]
+  }
+]

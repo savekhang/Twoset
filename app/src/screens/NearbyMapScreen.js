@@ -9,16 +9,24 @@ import {
   ActivityIndicator,
   Alert,
 } from "react-native";
-import MapView, { Marker, Callout, CalloutSubview } from "react-native-maps";
+import MapView, { Marker, Callout, CalloutSubview, PROVIDER_GOOGLE } from "react-native-maps";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
 import { API_BASE_URL } from "@env";
 
 export default function NearbyMapScreen({ route, navigation }) {
+  // 1. Kiểm tra log ngay khi vào màn hình
+  console.log("📍 NearbyMapScreen Loaded");
+  console.log("📍 Params received:", JSON.stringify(route.params));
+
   const { nearbyUsers = [], latitude, longitude } = route.params || {};
   const mapRef = useRef(null);
   const [loading, setLoading] = useState(false);
+
+  // Đảm bảo tọa độ là số
+  const myLat = Number(latitude);
+  const myLon = Number(longitude);
 
   useEffect(() => {
     if (mapRef.current && nearbyUsers.length > 0) {
@@ -26,12 +34,15 @@ export default function NearbyMapScreen({ route, navigation }) {
         latitude: parseFloat(u.latitude),
         longitude: parseFloat(u.longitude),
       }));
-      markers.push({ latitude, longitude });
+      markers.push({ latitude: myLat, longitude: myLon });
 
-      mapRef.current.fitToCoordinates(markers, {
-        edgePadding: { top: 100, right: 100, bottom: 100, left: 100 },
-        animated: true,
-      });
+      // Delay nhẹ để MapView kịp render layout
+      setTimeout(() => {
+        mapRef.current.fitToCoordinates(markers, {
+          edgePadding: { top: 70, right: 70, bottom: 70, left: 70 },
+          animated: true,
+        });
+      }, 800);
     }
   }, [nearbyUsers]);
 
@@ -39,24 +50,25 @@ export default function NearbyMapScreen({ route, navigation }) {
     try {
       setLoading(true);
       const token = await AsyncStorage.getItem("token");
-
       const res = await axios.get(`${API_BASE_URL}/users/userProfile/${userId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-
       navigation.navigate("UserProfile", { user: res.data.profile });
     } catch (err) {
-      console.error("Fetch user profile error:", err.response?.data || err.message);
       Alert.alert("Lỗi", "Không thể tải hồ sơ người dùng");
     } finally {
       setLoading(false);
     }
   };
 
-  if (loading) {
+  // Nếu thiếu tọa độ thì không render map để tránh lỗi trắng màn hình
+  if (!latitude || !longitude) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#f4454b" />
+        <Text>Không tìm thấy tọa độ vị trí của bạn.</Text>
+        <TouchableOpacity onPress={() => navigation.goBack()}>
+           <Text style={{color: 'blue', marginTop: 10}}>Quay lại</Text>
+        </TouchableOpacity>
       </View>
     );
   }
@@ -64,48 +76,50 @@ export default function NearbyMapScreen({ route, navigation }) {
   return (
     <View style={styles.container}>
       <MapView
+        // provider={PROVIDER_GOOGLE} // Bỏ comment nếu bạn đã cài Google Maps cho Android
         style={styles.map}
         ref={mapRef}
         initialRegion={{
-          latitude: latitude || 21.0278,
-          longitude: longitude || 105.8342,
+          latitude: myLat,
+          longitude: myLon,
           latitudeDelta: 0.05,
           longitudeDelta: 0.05,
         }}
         showsUserLocation={true}
       >
-        {/* Marker bản thân */}
-        <Marker coordinate={{ latitude, longitude }} title="Bạn đang ở đây" pinColor="blue" />
+        {/* Marker vị trí của tôi */}
+        <Marker 
+            coordinate={{ latitude: myLat, longitude: myLon }} 
+            title="Bạn đang ở đây" 
+            pinColor="blue" 
+        />
 
-        {/* Marker người dùng khác */}
+        {/* Marker những người xung quanh */}
         {nearbyUsers.map((user) => (
           <Marker
-            key={user.id}
+            key={user.id.toString()}
             coordinate={{
               latitude: parseFloat(user.latitude),
               longitude: parseFloat(user.longitude),
             }}
-            anchor={{ x: 0.5, y: 1 }}
           >
-            {user.avatar_url && (
-              <Image source={{ uri: user.avatar_url }} style={styles.avatar} />
-            )}
+            <View style={styles.markerWrapper}>
+                {user.avatar_url ? (
+                <Image source={{ uri: user.avatar_url }} style={styles.avatar} />
+                ) : (
+                <Ionicons name="person-circle" size={40} color="#ccc" />
+                )}
+            </View>
 
-            <Callout tooltip>
+            <Callout tooltip onPress={() => handleViewProfile(user.id)}>
               <View style={styles.calloutContainer}>
                 <Text style={styles.calloutName}>{user.name}</Text>
                 <Text style={styles.calloutDistance}>
-                  Cách bạn {(user.distance || 0).toFixed(2)} km
+                  Cách bạn {(Number(user.distance) || 0).toFixed(2)} km
                 </Text>
-
-                <CalloutSubview onPress={() => handleViewProfile(user.id)}>
-                  <View style={styles.calloutButton}>
-                    <Ionicons name="person-circle-outline" size={22} color="#fff" />
-                    <Text style={styles.calloutButtonText}>Xem hồ sơ</Text>
-                  </View>
-                </CalloutSubview>
-
-                <View style={styles.arrowDown} />
+                <View style={styles.calloutButton}>
+                  <Text style={styles.calloutButtonText}>Xem hồ sơ</Text>
+                </View>
               </View>
             </Callout>
           </Marker>
@@ -115,85 +129,118 @@ export default function NearbyMapScreen({ route, navigation }) {
       <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
         <Ionicons name="arrow-back" size={28} color="white" />
       </TouchableOpacity>
+
+      {loading && (
+        <View style={styles.overlayLoading}>
+          <ActivityIndicator size="large" color="#ff3366" />
+        </View>
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  map: {
-    width: Dimensions.get("window").width,
-    height: Dimensions.get("window").height,
+  container: { 
+    flex: 1, 
+    backgroundColor: '#f8f9fa' 
   },
-  avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+  map: { 
+    width: '100%', 
+    height: '100%' 
+  },
+  markerWrapper: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'white',
+    padding: 3,
+    borderRadius: 30,
+    borderWidth: 3,
+    borderColor: '#ff3366',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  avatar: { 
+    width: 45, 
+    height: 45, 
+    borderRadius: 22.5,
     borderWidth: 2,
-    borderColor: "#fff",
+    borderColor: '#fff'
   },
   calloutContainer: {
-    backgroundColor: "rgba(0,0,0,0.8)",
-    borderRadius: 10,
-    paddingVertical: 8,
-    paddingHorizontal: 10,
+    backgroundColor: "white",
+    borderRadius: 16,
+    padding: 12,
     alignItems: "center",
-    justifyContent: "center",
-    width: 150,
-    minHeight: 80,
+    width: 160,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 8,
   },
-  calloutName: {
-    color: "#fff",
-    fontWeight: "600",
-    fontSize: 14,
-    marginBottom: 2,
+  calloutName: { 
+    fontWeight: "700", 
+    fontSize: 16, 
+    color: '#333',
+    marginBottom: 4
   },
-  calloutDistance: {
-    color: "#ddd",
-    fontSize: 12,
-    marginBottom: 2,
+  calloutDistance: { 
+    color: "#666", 
+    fontSize: 13, 
+    marginVertical: 4,
+    fontWeight: '500'
   },
   calloutButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#f4454bff",
+    backgroundColor: "#ff3366",
     paddingVertical: 6,
-    paddingHorizontal: 10,
-    borderRadius: 6,
-    marginTop: 45,
-    marginLeft: 23,
-    width: "80%",
-    alignSelf: "center",
+    paddingHorizontal: 12,
+    borderRadius: 20,
+    marginTop: 6,
+    shadowColor: '#ff3366',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 3,
   },
-  calloutButtonText: {
-    color: "#fff",
-    fontSize: 12,
-    marginLeft: 4,
-  },
-  arrowDown: {
-    position: "absolute",
-    bottom: -6,
-    width: 0,
-    height: 0,
-    borderLeftWidth: 6,
-    borderRightWidth: 6,
-    borderTopWidth: 6,
-    borderLeftColor: "transparent",
-    borderRightColor: "transparent",
-    borderTopColor: "rgba(0,0,0,0.8)",
+  calloutButtonText: { 
+    color: "#fff", 
+    fontSize: 12, 
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5
   },
   backButton: {
-    position: "absolute",
-    top: 50,
+    position: "absolute", 
+    top: 50, 
     left: 20,
-    backgroundColor: "rgba(0,0,0,0.5)",
-    borderRadius: 30,
-    padding: 8,
-    zIndex: 10,
+    backgroundColor: "rgba(255,255,255,0.9)", 
+    borderRadius: 25,
+    width: 50, 
+    height: 50, 
+    alignItems: 'center', 
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 4,
   },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: "center",
+  loadingContainer: { 
+    flex: 1, 
+    justifyContent: "center", 
     alignItems: "center",
+    backgroundColor: '#f8f9fa'
   },
+  overlayLoading: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(255,255,255,0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 16,
+  }
 });

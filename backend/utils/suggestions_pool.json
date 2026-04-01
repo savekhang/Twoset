@@ -1,0 +1,442 @@
+[
+  {
+    "id": 1,
+    "text": "Chào bạn! Rất vui khi match với bạn qua app này.",
+    "tags": ["general", "greeting"],
+    "context_score": {
+      "shared_interests": 0,
+      "same_city": 0,
+      "age_diff": 0,
+      "gender_match": 0
+    }
+  },
+  {
+    "id": 2,
+    "text": "Hi! Mình thấy chúng ta có điểm chung về sở thích [interests].",
+    "tags": ["shared_interests", "enthusiastic"],
+    "context_score": {
+      "shared_interests": 15,
+      "same_city": 0,
+      "age_diff": 0,
+      "gender_match": 0
+    }
+  },
+  {
+    "id": 3,
+    "text": "Ồ, bạn cũng ở [location] à? Thật là trùng hợp!",
+    "tags": ["same_city", "surprised"],
+    "context_score": {
+      "shared_interests": 0,
+      "same_city": 10,
+      "age_diff": 0,
+      "gender_match": 0
+    }
+  },
+  {
+    "id": 4,
+    "text": "Mình [age] tuổi, còn bạn thì sao? Tuổi tác cũng quan trọng trong việc kết nối.",
+    "tags": ["age", "personal"],
+    "context_score": {
+      "shared_interests": 0,
+      "same_city": 0,
+      "age_diff": 5,
+      "gender_match": 0
+    }
+  },
+  {
+    "id": 5,
+    "text": "Bạn đang làm gì vào cuối tuần vậy?",
+    "tags": ["general", "conversation_starter"],
+    "context_score": {
+      "shared_interests": 0,
+      "same_city": 0,
+      "age_diff": 0,
+      "gender_match": 0
+    }
+  },
+  {
+    "id": 6,
+    "text": "Sở thích [interests] của bạn nghe rất thú vị! Mình cũng thích lắm.",
+    "tags": ["shared_interests", "enthusiastic"],
+    "context_score": {
+      "shared_interests": 15,
+      "same_city": 0,
+      "age_diff": 0,
+      "gender_match": 0
+    }
+  },
+  {
+    "id": 7,
+    "text": "Nếu ở [location], mình muốn giới thiệu cho bạn vài chỗ hay.",
+    "tags": ["same_city", "tour_guide"],
+    "context_score": {
+      "shared_interests": 0,
+      "same_city": 10,
+      "age_diff": 0,
+      "gender_match": 0
+    }
+  },
+  {
+    "id": 8,
+    "text": "Tuổi [age] của mình và bạn có vẻ khá hợp nhau.",
+    "tags": ["age", "compatibility"],
+    "context_score": {
+      "shared_interests": 0,
+      "same_city": 0,
+      "age_diff": 5,
+      "gender_match": 0
+    }
+  },
+  {
+    "id": 9,
+    "text": "Bạn thích nghe nhạc gì? Mình có thể recommend vài bài.",
+    "tags": ["music", "recommendation"],
+    "context_score": {
+      "shared_interests": 8,
+      "same_city": 0,
+      "age_diff": 0,
+      "gender_match": 0
+    }
+  },
+  {
+    "id": 10,
+    "text": "Ở [location] có nhiều quán ăn ngon lắm, bạn đã thử chưa?",
+    "tags": ["same_city", "food"],
+    "context_score": {
+      "shared_interests": 0,
+      "same_city": 10,
+      "age_diff": 0,
+      "gender_match": 0
+    }
+  },
+  {
+    "id": 11,
+    "text": "Mình thấy bio của bạn rất thú vị. Kể mình nghe thêm đi!",
+    "tags": ["bio", "curious"],
+    "context_score": {
+      "shared_interests": 0,
+      "same_city": 0,
+      "age_diff": 0,
+      "gender_match": 0
+    }
+  },
+  {
+    "id": 12,
+    "text": "Chúng ta cùng thích [interests], có muốn chia sẻ kinh nghiệm không?",
+    "tags": ["shared_interests", "experience"],
+    "context_score": {
+      "shared_interests": 15,
+      "same_city": 0,
+      "age_diff": 0,
+      "gender_match": 0
+    }
+  },
+  {
+    "id": 13,
+    "text": "Tuổi trẻ như chúng ta nên khám phá nhiều hơn!",
+    "tags": ["age", "young"],
+    "context_score": {
+      "shared_interests": 0,
+      "same_city": 0,
+      "age_diff": 3,
+      "gender_match": 0
+    }
+  },
+  {
+    "id": 14,
+    "text": "Bạn đã đi du lịch ở đâu chưa? Mình muốn nghe câu chuyện của bạn.",
+    "tags": ["travel", "stories"],
+    "context_score": {
+      "shared_interests": 8,
+      "same_city": 0,
+      "age_diff": 0,
+      "gender_match": 0
+    }
+  },
+  {
+    "id": 15,
+    "text": "Ở [location] này, bạn thích đi chơi ở đâu nhất?",
+    "tags": ["same_city", "local"],
+    "context_score": {
+      "shared_interests": 0,
+      "same_city": 10,
+      "age_diff": 0,
+      "gender_match": 0
+    }
+  },
+  {
+    "id": 16,
+    "text": "Mình cũng thích đọc sách như bạn. Sách gì đang hot hiện nay?",
+    "tags": ["books", "reading"],
+    "context_score": {
+      "shared_interests": 12,
+      "same_city": 0,
+      "age_diff": 0,
+      "gender_match": 0
+    }
+  },
+  {
+    "id": 17,
+    "text": "Tuổi [age] của bạn và mình có vẻ khá tương đồng.",
+    "tags": ["age", "similar"],
+    "context_score": {
+      "shared_interests": 0,
+      "same_city": 0,
+      "age_diff": 5,
+      "gender_match": 0
+    }
+  },
+  {
+    "id": 18,
+    "text": "Bạn có hobby gì đặc biệt không? Mình muốn biết thêm về bạn.",
+    "tags": ["hobby", "personal"],
+    "context_score": {
+      "shared_interests": 0,
+      "same_city": 0,
+      "age_diff": 0,
+      "gender_match": 0
+    }
+  },
+  {
+    "id": 19,
+    "text": "Chúng ta có thể cùng nhau thử [interests] vào cuối tuần.",
+    "tags": ["shared_interests", "activity"],
+    "context_score": {
+      "shared_interests": 15,
+      "same_city": 0,
+      "age_diff": 0,
+      "gender_match": 0
+    }
+  },
+  {
+    "id": 20,
+    "text": "Ở [location], thời tiết hôm nay thế nào? Mình muốn biết.",
+    "tags": ["same_city", "weather"],
+    "context_score": {
+      "shared_interests": 0,
+      "same_city": 8,
+      "age_diff": 0,
+      "gender_match": 0
+    }
+  },
+  {
+    "id": 21,
+    "text": "Mình [age] tuổi, bạn nghĩ chúng ta có thể làm bạn không?",
+    "tags": ["age", "friendship"],
+    "context_score": {
+      "shared_interests": 0,
+      "same_city": 0,
+      "age_diff": 3,
+      "gender_match": 0
+    }
+  },
+  {
+    "id": 22,
+    "text": "Bạn thích thể thao gì? Mình có thể chơi cùng bạn.",
+    "tags": ["sports", "activity"],
+    "context_score": {
+      "shared_interests": 10,
+      "same_city": 0,
+      "age_diff": 0,
+      "gender_match": 0
+    }
+  },
+  {
+    "id": 23,
+    "text": "Ở [location] có nhiều sự kiện thú vị, bạn đã tham gia chưa?",
+    "tags": ["same_city", "events"],
+    "context_score": {
+      "shared_interests": 0,
+      "same_city": 10,
+      "age_diff": 0,
+      "gender_match": 0
+    }
+  },
+  {
+    "id": 24,
+    "text": "Bio của bạn làm mình tò mò quá. Kể thêm đi!",
+    "tags": ["bio", "curious"],
+    "context_score": {
+      "shared_interests": 0,
+      "same_city": 0,
+      "age_diff": 0,
+      "gender_match": 0
+    }
+  },
+  {
+    "id": 25,
+    "text": "Chúng ta cùng thích [interests], thật là tuyệt vời!",
+    "tags": ["shared_interests", "excited"],
+    "context_score": {
+      "shared_interests": 15,
+      "same_city": 0,
+      "age_diff": 0,
+      "gender_match": 0
+    }
+  },
+  {
+    "id": 26,
+    "text": "Tuổi [age] của chúng ta có lẽ sẽ có nhiều điểm chung.",
+    "tags": ["age", "common"],
+    "context_score": {
+      "shared_interests": 0,
+      "same_city": 0,
+      "age_diff": 5,
+      "gender_match": 0
+    }
+  },
+  {
+    "id": 27,
+    "text": "Bạn thích nghe nhạc gì? Mình có playlist hay lắm.",
+    "tags": ["music", "sharing"],
+    "context_score": {
+      "shared_interests": 12,
+      "same_city": 0,
+      "age_diff": 0,
+      "gender_match": 0
+    }
+  },
+  {
+    "id": 28,
+    "text": "Ở [location], bạn có quán cà phê yêu thích không?",
+    "tags": ["same_city", "coffee"],
+    "context_score": {
+      "shared_interests": 0,
+      "same_city": 8,
+      "age_diff": 0,
+      "gender_match": 0
+    }
+  },
+  {
+    "id": 29,
+    "text": "Mình thấy chúng ta khá hợp về độ tuổi.",
+    "tags": ["age", "compatibility"],
+    "context_score": {
+      "shared_interests": 0,
+      "same_city": 0,
+      "age_diff": 5,
+      "gender_match": 0
+    }
+  },
+  {
+    "id": 30,
+    "text": "Bạn thích nấu ăn không? Mình có công thức ngon lắm.",
+    "tags": ["cooking", "food"],
+    "context_score": {
+      "shared_interests": 10,
+      "same_city": 0,
+      "age_diff": 0,
+      "gender_match": 0
+    }
+  },
+  {
+    "id": 31,
+    "text": "Ở [location] có nhiều chỗ đẹp để chụp ảnh.",
+    "tags": ["same_city", "photography"],
+    "context_score": {
+      "shared_interests": 0,
+      "same_city": 10,
+      "age_diff": 0,
+      "gender_match": 0
+    }
+  },
+  {
+    "id": 32,
+    "text": "Tuổi trẻ như chúng ta nên thử nhiều điều mới.",
+    "tags": ["age", "adventurous"],
+    "context_score": {
+      "shared_interests": 0,
+      "same_city": 0,
+      "age_diff": 3,
+      "gender_match": 0
+    }
+  },
+  {
+    "id": 33,
+    "text": "Bạn thích xem phim gì? Mình có thể recommend.",
+    "tags": ["movies", "entertainment"],
+    "context_score": {
+      "shared_interests": 8,
+      "same_city": 0,
+      "age_diff": 0,
+      "gender_match": 0
+    }
+  },
+  {
+    "id": 34,
+    "text": "Ở [location], bạn đã thử món ăn đặc trưng chưa?",
+    "tags": ["same_city", "food"],
+    "context_score": {
+      "shared_interests": 0,
+      "same_city": 10,
+      "age_diff": 0,
+      "gender_match": 0
+    }
+  },
+  {
+    "id": 35,
+    "text": "Bio của bạn rất ấn tượng. Mình muốn biết thêm.",
+    "tags": ["bio", "impressed"],
+    "context_score": {
+      "shared_interests": 0,
+      "same_city": 0,
+      "age_diff": 0,
+      "gender_match": 0
+    }
+  },
+  {
+    "id": 36,
+    "text": "Chúng ta có thể cùng nhau khám phá [interests].",
+    "tags": ["shared_interests", "exploration"],
+    "context_score": {
+      "shared_interests": 15,
+      "same_city": 0,
+      "age_diff": 0,
+      "gender_match": 0
+    }
+  },
+  {
+    "id": 37,
+    "text": "Tuổi [age] của bạn làm mình thấy chúng ta có thể tâm sự nhiều.",
+    "tags": ["age", "conversation"],
+    "context_score": {
+      "shared_interests": 0,
+      "same_city": 0,
+      "age_diff": 5,
+      "gender_match": 0
+    }
+  },
+  {
+    "id": 38,
+    "text": "Bạn thích nghe podcast không? Mình có vài tập hay.",
+    "tags": ["podcast", "audio"],
+    "context_score": {
+      "shared_interests": 6,
+      "same_city": 0,
+      "age_diff": 0,
+      "gender_match": 0
+    }
+  },
+  {
+    "id": 39,
+    "text": "Ở [location], có nhiều công viên đẹp để đi dạo.",
+    "tags": ["same_city", "nature"],
+    "context_score": {
+      "shared_interests": 0,
+      "same_city": 8,
+      "age_diff": 0,
+      "gender_match": 0
+    }
+  },
+  {
+    "id": 40,
+    "text": "Mình tin chúng ta sẽ có nhiều chủ đề để nói chuyện.",
+    "tags": ["general", "optimistic"],
+    "context_score": {
+      "shared_interests": 0,
+      "same_city": 0,
+      "age_diff": 0,
+      "gender_match": 0
+    }
+  }
+]

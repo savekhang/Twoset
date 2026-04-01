@@ -23,7 +23,7 @@ exports.getNotifications = async (req, res) => {
       parsedMetadata = n.metadata || {};
     }
   } catch (e) {
-    console.warn('⚠️ Metadata không hợp lệ:', n.metadata);
+    console.warn(' Metadata không hợp lệ:', n.metadata);
   }
 
   return {
@@ -36,7 +36,7 @@ exports.getNotifications = async (req, res) => {
   };
 });
 
-console.log('👉 Notifications trả về:', notifications);
+console.log(' Notifications trả về:', notifications);
 
 
     res.json({

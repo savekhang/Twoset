@@ -8,7 +8,7 @@
 
       const [rows] = await db.query(`
         SELECT 
-          u.id, u.name, u.email, u.avatar_url,
+          u.id, u.name, u.email, u.avatar_url, u.popularity_score,
           TIMESTAMPDIFF(YEAR, u.birthdate, CURDATE()) AS age,
           l.name AS location,
           u.is_premium
@@ -35,7 +35,7 @@
     // 1️⃣ Lấy thông tin user
     const [rows] = await db.query(`
       SELECT 
-        u.id, u.name, u.email, u.gender, u.birthdate, u.bio, u.avatar_url,
+        u.id, u.name, u.email, u.gender, u.popularity_score, u.birthdate, u.bio, u.avatar_url,
         u.latitude, u.longitude, u.is_online, u.last_seen,
         u.is_premium, u.created_at, u.is_verified,
         l.name AS location,
@@ -118,7 +118,7 @@
 
       const query = `
         SELECT 
-          u.id, u.name, u.email, u.avatar_url, u.gender,
+          u.id, u.name, u.email, u.avatar_url, u.gender, u.popularity_score,
           TIMESTAMPDIFF(YEAR, u.birthdate, CURDATE()) AS age,
           u.bio, u.latitude, u.longitude,
           l.name AS location_name
@@ -195,7 +195,7 @@
       // 1. Lấy thông tin người dùng + tuổi (tính bằng SQL)
       const [userRows] = await db.execute(`
         SELECT 
-          u.id, u.name, u.avatar_url, u.bio, u.gender, u.birthdate,
+          u.id, u.name, u.popularity_score, u.avatar_url, u.bio, u.gender, u.birthdate,
           TIMESTAMPDIFF(YEAR, u.birthdate, CURDATE()) AS age,
           u.is_premium, 
           l.name AS location

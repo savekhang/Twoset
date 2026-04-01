@@ -101,3 +101,41 @@ exports.sendMessage = async (req, res) => {
   }
 };
 
+// ✅ Lấy AI suggestions cho match
+exports.getMessageSuggestions = async (req, res) => {
+  try {
+    const { match_id } = req.params;
+    const userId = req.user.id;
+
+    console.log(`🤖 Getting AI suggestions for match ${match_id}, user ${userId}`);
+
+    // Kiểm tra user có quyền truy cập match này không
+    const [matchCheck] = await db.query(
+      'SELECT id FROM matches WHERE id = ? AND (user1_id = ? OR user2_id = ?)',
+      [match_id, userId, userId]
+    );
+
+    if (matchCheck.length === 0) {
+      return res.status(403).json({ error: 'Không có quyền truy cập match này' });
+    }
+
+    // Lấy suggestions từ database
+    const [suggestions] = await db.query(
+      'SELECT suggestions FROM message_suggestions WHERE match_id = ?',
+      [match_id]
+    );
+
+    if (suggestions.length === 0) {
+      console.log(`⚠️ No suggestions found for match ${match_id}`);
+      return res.json({ suggestions: [] });
+    }
+
+    console.log(`✅ Found suggestions for match ${match_id}:`, suggestions[0].suggestions);
+    res.json({ suggestions: suggestions[0].suggestions });
+
+  } catch (error) {
+    console.error("❌ Lỗi khi lấy AI suggestions:", error);
+    res.status(500).json({ error: "Lỗi khi lấy gợi ý tin nhắn" });
+  }
+};
+

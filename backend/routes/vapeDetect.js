@@ -47,7 +47,7 @@ router.post("/vape", upload.single("image"), async (req, res) => {
     );
 
     const predictions = rfResponse.data?.predictions || [];
-    const detected = predictions.some(p => p.confidence >= 0.4);
+    const detected = predictions.some(p => p.confidence >= 0.5);
 
     // ========= 2. LOAD ẢNH GỐC =========
     const image = await loadImage(req.file.path);

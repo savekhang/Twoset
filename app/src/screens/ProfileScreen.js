@@ -7,7 +7,6 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
-  Linking,
   Modal,
   StyleSheet,
   Dimensions
@@ -20,9 +19,9 @@ import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { API_BASE_URL, CLOUDINARY_URL, CLOUDINARY_UPLOAD_PRESET } from '@env';
 import styles from '../styles/ProfileScreen.styles';
 
+const { width } = Dimensions.get('window');
 const NUM_COLUMNS = 3;
 const ITEM_MARGIN = 4;
-const { width } = Dimensions.get('window');
 const ITEM_SIZE = (width - ITEM_MARGIN * (NUM_COLUMNS * 2)) / NUM_COLUMNS;
 
 const ProfileScreen = () => {
@@ -35,50 +34,125 @@ const ProfileScreen = () => {
   const [showModal, setShowModal] = useState(false);
 
   // ==============================
-  // 🔥 FETCH PROFILE
+  // 1. FETCH PROFILE (FIX ĐIỂM 0)
   // ==============================
   const fetchProfile = async () => {
     try {
       const token = await AsyncStorage.getItem('token');
-      if (!token) throw new Error("Token không tồn tại!");
+      if (!token) return;
 
-      const res = await axios.get(`${API_BASE_URL}/users/profile`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+      const response = await axios.get(`${API_BASE_URL}/users/profile`, {
+        headers: { Authorization: `Bearer ${token}` },
       });
 
-      const profile = res.data.user || {};
+      const rawUser = response.data.user || {};
+      
+      // Ép kiểu popularity_score về số để tránh lỗi hiển thị '0'
+      const validatedScore = Number(rawUser.popularity_score) || 0;
 
-      // Sort ảnh mới nhất ở trên
-      const sortedPhotos = (profile.photos || []).sort((a, b) => b.id - a.id);
+      setUser({
+        ...rawUser,
+        popularity_score: validatedScore
+      });
 
-      setUser(profile);
-      setAlbum(sortedPhotos);
-
+      if (rawUser.photos) {
+        setAlbum([...rawUser.photos].sort((a, b) => b.id - a.id));
+      }
     } catch (err) {
       console.error("Fetch profile error:", err);
-      Alert.alert("Lỗi", "Không thể tải thông tin hồ sơ.");
     } finally {
       setLoading(false);
     }
   };
 
-  // Chạy khi mở màn hình lần đầu
   useEffect(() => {
     fetchProfile();
   }, []);
 
-  // 🔥 Auto refresh khi quay lại màn hình
   useFocusEffect(
     useCallback(() => {
       fetchProfile();
     }, [])
   );
 
+  // ==============================
+  // 2. LOGIC THÊM ẢNH (FIX THƯ VIỆN + DETECT VAPE)
+  // ==============================
+  const handleAddAlbumPhoto = async () => {
+    // Xin quyền truy cập
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert("Quyền truy cập", "Vui lòng cho phép truy cập thư viện để đăng ảnh.");
+      return;
+    }
+
+    // Mở thư viện
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: false,
+      quality: 0.7,
+    });
+
+    if (result.canceled || !result.assets?.length) return;
+
+    const imageUri = result.assets[0].uri;
+    setUploading(true);
+
+    try {
+      // 1. Detect Vape trước khi upload
+      const detectForm = new FormData();
+      detectForm.append("image", {
+        uri: imageUri,
+        type: "image/jpeg",
+        name: "detect.jpg",
+      });
+
+      const detectRes = await axios.post(
+        `${API_BASE_URL}/detect/vape`,
+        detectForm,
+        { headers: { "Content-Type": "multipart/form-data" } }
+      );
+
+      if (detectRes.data.detected) {
+        Alert.alert("Ảnh chứa Vape!", "Không được phép upload ảnh chứa vape.");
+        return;
+      }
+
+      // 2. Upload lên Cloudinary
+      const formData = new FormData();
+      formData.append("file", {
+        uri: imageUri,
+        type: "image/jpeg",
+        name: "album.jpg",
+      });
+      formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
+
+      const cloudRes = await axios.post(CLOUDINARY_URL, formData);
+      const imageUrl = cloudRes.data.secure_url;
+
+      // 3. Lưu vào Database của bạn
+      const token = await AsyncStorage.getItem("token");
+      const apiRes = await axios.post(
+        `${API_BASE_URL}/users/add-album-photo`,
+        { photo_url: imageUrl },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      // 4. Cập nhật giao diện ngay lập tức
+      if (apiRes.data.photo) {
+        setAlbum(prev => [apiRes.data.photo, ...prev]);
+        Alert.alert("Thành công", "Đã thêm ảnh mới!");
+      }
+    } catch (err) {
+      console.error("Upload error:", err);
+      Alert.alert("Lỗi", "Không thể tải ảnh lên.");
+    } finally {
+      setUploading(false);
+    }
+  };
 
   // ==============================
-  // 🔥 Upload Avatar
+  // 3. LOGIC ĐỔI AVATAR
   // ==============================
   const pickAndUploadAvatar = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -94,7 +168,7 @@ const ProfileScreen = () => {
     }
 
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       aspect: [1, 1],
       quality: 1,
@@ -137,186 +211,63 @@ const ProfileScreen = () => {
     }
   };
 
-
   // ==============================
-  // 🔥 Add Album Photo
+  // 4. RENDER UI
   // ==============================
-  const addAlbumPhoto = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      allowsEditing: false,
-      quality: 1,
-    });
-
-    if (result.canceled || !result.assets?.length) return;
-
-    const imageUri = result.assets[0].uri;
-    setUploading(true);
-
-    try {
-      // 1. Detect Vape
-      const detectForm = new FormData();
-      detectForm.append("image", { uri: imageUri, type: "image/jpeg", name: "detect.jpg" });
-
-      const detectRes = await axios.post(
-        `${API_BASE_URL}/detect/vape`,
-        detectForm,
-        { headers: { "Content-Type": "multipart/form-data" } }
-      );
-
-      if (detectRes.data.detected) {
-        Alert.alert("Ảnh chứa Vape!", "Không được phép upload.");
-        return;
-      }
-
-      // 2. Upload Cloudinary
-      const formData = new FormData();
-      formData.append("file", { uri: imageUri, type: "image/jpeg", name: "album.jpg" });
-      formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
-
-      const cloudRes = await axios.post(CLOUDINARY_URL, formData, {
-        headers: { "Content-Type": "multipart/form-data" }
-      });
-
-      const imageUrl = cloudRes.data.secure_url;
-
-      // 3. Save to DB
-      const token = await AsyncStorage.getItem("token");
-      const apiRes = await axios.post(
-        `${API_BASE_URL}/users/add-album-photo`,
-        { photo_url: imageUrl },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-
-      // 4. Update UI
-      setAlbum(prev => [{ id: apiRes.data.photo.id, photo_url: imageUrl }, ...prev]);
-
-      Alert.alert("Thành công", "Đã thêm ảnh vào album!");
-    } catch (err) {
-      console.error("Add album error:", err);
-      Alert.alert("Lỗi", "Không thể thêm ảnh vào album.");
-    } finally {
-      setUploading(false);
-    }
-  };
-
-
-  // ==============================
-  // 🔥 Delete Album Photo
-  // ==============================
-  const deletePhoto = (photo) => {
-    Alert.alert(
-      "Xóa ảnh?",
-      "Bạn có chắc muốn xóa?",
-      [
-        { text: "Hủy", style: "cancel" },
-        {
-          text: "Xóa",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              const token = await AsyncStorage.getItem("token");
-              await axios.delete(`${API_BASE_URL}/users/delete-album-photo/${photo.id}`, {
-                headers: { Authorization: `Bearer ${token}` },
-              });
-
-              setAlbum(prev => prev.filter(p => p.id !== photo.id));
-            } catch (err) {
-              console.error("Delete error:", err);
-              Alert.alert("Lỗi", "Không thể xóa ảnh.");
-            }
-          },
-        },
-      ]
-    );
-  };
-
-
-  // ==============================
-  // 🔥 UI Components
-  // ==============================
-  const formatAlbumData = (data, numColumns) => {
-    const newData = [...data];
-    const fullRows = Math.floor(newData.length / numColumns);
-    let lastRowItems = newData.length - fullRows * numColumns;
-
-    while (lastRowItems !== 0 && lastRowItems !== numColumns) {
-      newData.push({ id: `empty-${lastRowItems}`, empty: true });
-      lastRowItems++;
-    }
-
-    return newData;
-  };
-
-  const renderAlbumItem = ({ item }) => {
-    if (item.empty) return <View style={{ flex: 1, margin: ITEM_MARGIN }} />;
-
-    const img = item.photo_url || item.uri;
-
-    return (
-      <TouchableOpacity
-        style={{ flex: 1, margin: ITEM_MARGIN }}
-        onPress={() => {
-          setSelectedImage(img);
-          setShowModal(true);
-        }}
-        onLongPress={() => deletePhoto(item)}
-      >
-        <Image
-          source={{ uri: img }}
-          style={{ width: ITEM_SIZE, height: ITEM_SIZE, borderRadius: 12 }}
-        />
-      </TouchableOpacity>
-    );
-  };
-
-
   const renderHeader = () => (
-    <>
+    <View style={{ backgroundColor: '#fff' }}>
       <View style={styles.header}>
         <Text style={styles.username}>𝒯 𝓌 𝑜 𝓈 𝑒 𝓉</Text>
-
-        <TouchableOpacity
-          style={styles.editButtonHeader}
-          onPress={() => navigation.navigate("Settings")}
-        >
+        <TouchableOpacity onPress={() => navigation.navigate("Settings")}>
           <Ionicons name="settings-outline" size={25} color="#000" />
         </TouchableOpacity>
       </View>
 
-      <View style={styles.profileInfo}>
-        {user?.is_premium === 1 && <Text style={styles.premiumTag}>Premium</Text>}
-
-        <Image
-          source={{ uri: user?.avatar_url || "https://via.placeholder.com/80" }}
-          style={styles.avatar}
-        />
+      <View style={localStyles.profileCard}>
+        <View style={localStyles.avatarWrapper}>
+          {user?.is_premium === 1 && (
+            <View style={localStyles.premiumTag}>
+              <Text style={localStyles.premiumText}>Premium</Text>
+            </View>
+          )}
+          <Image
+            source={{ uri: user?.avatar_url || "https://via.placeholder.com/150" }}
+            style={styles.avatar}
+          />
+        </View>
 
         <Text style={styles.name}>{user?.name}</Text>
-        <Text style={styles.bio}>{user?.bio || "Chưa có mô tả"}</Text>
-        <Text style={styles.gender}>{user?.gender}</Text>
-        <Text style={styles.age}>{user?.age ? `${user.age} tuổi` : "Chưa rõ tuổi"}</Text>
-        <Text style={styles.location}>{user?.location || "Chưa có địa chỉ"}</Text>
 
-        {/* Sở thích */}
-        {user?.interests?.length > 0 ? (
-          <View style={styles.interestsContainer}>
-            {user.interests.map(item => (
-              <Text key={item.id} style={styles.interestItem}>
-                {item.icon ? `${item.icon} ` : ""}{item.name}
-              </Text>
-            ))}
-          </View>
-        ) : (
-          <Text style={styles.interest}>Chưa có sở thích</Text>
-        )}
+        {/* Điểm nổi bật - Đã fix hiển thị */}
+        <View style={localStyles.scoreContainer}>
+          <MaterialIcons name="stars" size={20} color="#ff3366" />
+          <Text style={localStyles.scoreText}>
+             Điểm nổi bật: {user?.popularity_score ?? 0}
+          </Text>
+        </View>
+
+        <Text style={styles.bio}>{user?.bio || "Chưa có mô tả"}</Text>
+        
+        <View style={localStyles.infoRow}>
+            <Text style={styles.age}>{user?.age ? `${user.age} tuổi` : ""}</Text>
+            {user?.gender && <Text style={styles.gender}> • {user.gender}</Text>}
+            {user?.location && <Text style={styles.location}> • {user.location}</Text>}
+        </View>
+
+        <View style={styles.interestsContainer}>
+          {user?.interests?.map((item, index) => (
+            <Text key={item.id || index} style={styles.interestItem}>
+              {item.icon} {item.name}
+            </Text>
+          ))}
+        </View>
 
         <TouchableOpacity
           style={styles.editButton}
           onPress={() =>
             Alert.alert("Chỉnh sửa", "", [
               { text: "Đổi Avatar", onPress: pickAndUploadAvatar },
-              { text: "Chỉnh sửa Info", onPress: () => navigation.navigate("EditProfile") },
+              { text: "Cập nhật thông tin", onPress: () => navigation.navigate("EditProfile") },
               { text: "Hủy", style: "cancel" },
             ])
           }
@@ -326,77 +277,73 @@ const ProfileScreen = () => {
       </View>
 
       <View style={styles.albumIconContainer}>
-        <Text style={styles.albumText}>Album</Text>
-
-        <TouchableOpacity onPress={addAlbumPhoto} disabled={uploading}>
-          <MaterialIcons name="add-circle" size={36} color="#ff3366" />
+        <Text style={styles.albumText}>Album ảnh</Text>
+        {/* FIX: Gắn hàm handleAddAlbumPhoto vào onPress */}
+        <TouchableOpacity onPress={handleAddAlbumPhoto} disabled={uploading}>
+          {uploading ? (
+            <ActivityIndicator size="small" color="#ff3366" />
+          ) : (
+            <MaterialIcons name="add-a-photo" size={26} color="#ff3366" />
+          )}
         </TouchableOpacity>
       </View>
-    </>
+    </View>
   );
 
-
-  if (loading) {
-    return (
-      <View style={styles.container}>
-        <ActivityIndicator size="large" color="#ff3366" />
-      </View>
-    );
-  }
-
+  if (loading) return <ActivityIndicator size="large" color="#ff3366" style={{flex:1}} />;
 
   return (
     <View style={{ flex: 1, backgroundColor: "#fff" }}>
       <FlatList
-        data={formatAlbumData(album, NUM_COLUMNS)}
-        renderItem={renderAlbumItem}
+        data={album}
+        renderItem={({ item }) => (
+          <TouchableOpacity 
+            style={{ margin: ITEM_MARGIN }}
+            onPress={() => { setSelectedImage(item.photo_url); setShowModal(true); }}
+          >
+            <Image 
+              source={{ uri: item.photo_url }} 
+              style={{ width: ITEM_SIZE, height: ITEM_SIZE, borderRadius: 8 }} 
+            />
+          </TouchableOpacity>
+        )}
         numColumns={NUM_COLUMNS}
         keyExtractor={(item, index) => item.id?.toString() || index.toString()}
         ListHeaderComponent={renderHeader}
-        contentContainerStyle={{ paddingBottom: 80 }}
         showsVerticalScrollIndicator={false}
       />
 
       <Modal visible={showModal} transparent animationType="fade">
-        <View style={modalStyles.modalBackground}>
-          <TouchableOpacity
-            style={modalStyles.closeButton}
-            onPress={() => setShowModal(false)}
-          >
-            <Ionicons name="close" size={40} color="#fff" />
+        <View style={localStyles.modalBg}>
+          <TouchableOpacity style={localStyles.closeBtn} onPress={() => setShowModal(false)}>
+            <Ionicons name="close-circle" size={45} color="#fff" />
           </TouchableOpacity>
-
-          {selectedImage && (
-            <Image
-              source={{ uri: selectedImage }}
-              style={modalStyles.fullImage}
-              resizeMode="contain"
-            />
-          )}
+          <Image source={{ uri: selectedImage }} style={localStyles.fullImg} resizeMode="contain" />
         </View>
       </Modal>
     </View>
   );
 };
 
-
-const modalStyles = StyleSheet.create({
-  modalBackground: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.9)",
-    justifyContent: "center",
-    alignItems: "center",
+const localStyles = StyleSheet.create({
+  profileCard: { alignItems: 'center', paddingHorizontal: 20 },
+  avatarWrapper: { position: 'relative', marginTop: 10, marginBottom: 10 },
+  premiumTag: {
+    position: 'absolute', top: -12, alignSelf: 'center',
+    backgroundColor: '#FFD700', paddingHorizontal: 12, paddingVertical: 2,
+    borderRadius: 12, zIndex: 10, borderWidth: 2, borderColor: '#fff',
   },
-  closeButton: {
-    position: "absolute",
-    top: 40,
-    right: 20,
-    zIndex: 2,
+  premiumText: { fontSize: 11, fontWeight: 'bold', color: '#000' },
+  scoreContainer: {
+    flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF0F3',
+    paddingHorizontal: 18, paddingVertical: 6, borderRadius: 25, marginVertical: 10,
+    borderWidth: 1, borderColor: '#ffccd5'
   },
-  fullImage: {
-    width: "90%",
-    height: "70%",
-  },
+  scoreText: { color: '#ff3366', fontWeight: 'bold', fontSize: 16, marginLeft: 6 },
+  infoRow: { flexDirection: 'row', marginVertical: 5 },
+  modalBg: { flex: 1, backgroundColor: 'rgba(0,0,0,0.9)', justifyContent: 'center', alignItems: 'center' },
+  fullImg: { width: '95%', height: '80%' },
+  closeBtn: { position: 'absolute', top: 50, right: 30, zIndex: 20 }
 });
 
 export default ProfileScreen;

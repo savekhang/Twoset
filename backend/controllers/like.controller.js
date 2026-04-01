@@ -1,7 +1,8 @@
 const db = require('../config/db');
 const { sendNotification } = require('../utils/notification');
 const { generateMessageSuggestions } = require('../utils/aiSuggestion');
-
+const ai = require('../utils/aiSuggestion');
+console.log("🔥 AI MODULE:", ai);
 // 🔍 DEBUG IMPORT
 console.log("AI Suggestion TYPE:", typeof generateMessageSuggestions);
 

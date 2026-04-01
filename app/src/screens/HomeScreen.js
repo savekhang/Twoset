@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, Image, ScrollView, TouchableOpacity, Alert, Linking } from "react-native";
+import { View, Text, Image, ScrollView, TouchableOpacity, Alert, Linking, ActivityIndicator } from "react-native";
 import { Ionicons, FontAwesome } from "@expo/vector-icons";
 import * as Location from "expo-location";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -8,8 +8,9 @@ import styles from "../styles/HomeScreen.styles";
 
 export default function HomeScreen({ navigation }) {
   const [unreadCount, setUnreadCount] = useState(0);
+  const [loadingLocation, setLoadingLocation] = useState(false);
 
-  // Gọi API đếm thông báo chưa đọc
+  // 1. Gọi API lấy số thông báo chưa đọc
   const fetchNotifications = async () => {
     try {
       const res = await apiClient.get(`/noti`);
@@ -28,40 +29,57 @@ export default function HomeScreen({ navigation }) {
     return unsubscribe;
   }, [navigation]);
 
+  // 2. Mảng dữ liệu quảng cáo
   const ads = [
     { id: 1, image: require("../../assets/ads/ads_1.jpg"), type: "link", link: "https://www.youtube.com/watch?v=2_04SN58vJY" },
     { id: 2, image: require("../../assets/ads/ads_2.jpg"), type: "qr" },
     { id: 3, image: require("../../assets/ads/ads_3.jpg"), type: "stripe" },
   ];
 
+  // 3. 🔹 Logic xử lý Ads theo code cũ của bạn
   const handleAdPress = async (ad) => {
-    if (ad.type === "link") Linking.openURL(ad.link);
-    else if (ad.type === "qr") {
+    if (ad.type === "link") {
+      Linking.openURL(ad.link);
+    } else if (ad.type === "qr") {
       try {
         const res = await apiClient.get(`/qr/generate`);
         navigation.navigate("QrScreen", { qrDataURL: res.data.qrDataURL, qrCode: res.data.qrCode });
-      } catch (err) { Alert.alert("Lỗi", "Không lấy được QR"); }
+      } catch (err) { 
+        Alert.alert("Lỗi", "Không lấy được QR"); 
+      }
     } else if (ad.type === "stripe") {
       try {
         const res = await apiClient.post(`/payment/stripe/create-session`);
-        if (res.data.url) Linking.openURL(res.data.url);
-        else Alert.alert("Lỗi", "Không lấy được URL thanh toán.");
-      } catch (err) { Alert.alert("Lỗi", "Không thể tạo phiên thanh toán."); }
+        if (res.data.url) {
+          Linking.openURL(res.data.url);
+        } else {
+          Alert.alert("Lỗi", "Không lấy được URL thanh toán.");
+        }
+      } catch (err) { 
+        Alert.alert("Lỗi", "Không thể tạo phiên thanh toán."); 
+      }
     }
   };
 
+  // 4. Xử lý mở thông báo
   const handleOpenNotifications = async () => {
     navigation.navigate("Notifications");
     setUnreadCount(0);
-    try { await apiClient.put(`/noti/markAllAsRead`); } catch (err) { console.error(err); }
+    try { 
+      await apiClient.put(`/noti/markAllAsRead`); 
+    } catch (err) { 
+      console.error(err); 
+    }
   };
 
-  // 🔹 Hàm click icon vị trí
+  // 5. 🔹 Logic click icon vị trí theo code cũ của bạn
   const handleOpenNearbyMap = async () => {
+    setLoadingLocation(true); // Thêm loading để người dùng biết app đang xử lý
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== "granted") {
         Alert.alert("Permission denied", "Bạn cần cấp quyền vị trí để tìm người dùng gần bạn.");
+        setLoadingLocation(false);
         return;
       }
 
@@ -76,11 +94,14 @@ export default function HomeScreen({ navigation }) {
       );
 
       const nearbyUsers = res.data.users || [];
+      // Chuyển hướng sang màn hình Nearby với dữ liệu từ server
       navigation.navigate("Nearby", { nearbyUsers, latitude, longitude });
 
     } catch (err) {
       console.error(err);
       Alert.alert("Error", "Không thể lấy vị trí hoặc danh sách người dùng gần bạn.");
+    } finally {
+      setLoadingLocation(false);
     }
   };
 
@@ -108,7 +129,7 @@ export default function HomeScreen({ navigation }) {
         </View>
       </View>
 
-      {/* Ads */}
+      {/* Ads Section */}
       <ScrollView style={styles.adsContainer}>
         {ads.map(ad => (
           <TouchableOpacity key={ad.id} onPress={() => handleAdPress(ad)}>
@@ -119,18 +140,26 @@ export default function HomeScreen({ navigation }) {
 
       {/* Bottom Nav */}
       <View style={styles.bottomNav}>
-        <TouchableOpacity onPress={handleOpenNearbyMap}>
-          <FontAwesome name="map-marker" size={30} color="black" />
+        <TouchableOpacity onPress={handleOpenNearbyMap} disabled={loadingLocation}>
+          {loadingLocation ? (
+            <ActivityIndicator size="small" color="gray" />
+          ) : (
+            <FontAwesome name="map-marker" size={30} color="black" />
+          )}
         </TouchableOpacity>
+        
         <TouchableOpacity onPress={() => navigation.navigate("Search")}>
           <Ionicons name="search" size={30} color="black" />
         </TouchableOpacity>
+        
         <TouchableOpacity onPress={() => navigation.navigate("SwipeScreen")}>
           <Ionicons name="heart-outline" size={50} color="red" />
         </TouchableOpacity>
+        
         <TouchableOpacity onPress={() => navigation.navigate("Mess")}>
           <Ionicons name="chatbubble-outline" size={30} color="black" />
         </TouchableOpacity>
+        
         <TouchableOpacity onPress={() => navigation.navigate("Profile")}>
           <Ionicons name="person-outline" size={30} color="black" />
         </TouchableOpacity>

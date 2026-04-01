@@ -8,7 +8,7 @@
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "scheme": "twoset",
-    "plugins": ["expo-web-browser", "expo-linking", "expo-font"],
+    "plugins": ["expo-web-browser", "expo-linking", "expo-font", "react-native-maps"],
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",

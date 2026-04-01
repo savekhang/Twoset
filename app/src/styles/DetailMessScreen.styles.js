@@ -10,6 +10,7 @@ export default StyleSheet.create({
   header: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "space-between", // Căn đều các item
     backgroundColor: "#f6ceceff", // màu chủ đạo
     paddingVertical: 10,
     paddingHorizontal: 14,
@@ -20,6 +21,15 @@ export default StyleSheet.create({
     shadowOpacity: 0.5,
     shadowRadius: 3,
     paddingTop: Platform.OS === "android" ? StatusBar.currentHeight + 6 : 44,
+  },
+  backButton: {
+    padding: 6,
+  },
+  profileLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1, // Để link chiếm phần lớn không gian còn lại
+    justifyContent: 'center', // Căn giữa avatar và tên
   },
   avatar: {
     width: 42,
@@ -33,6 +43,9 @@ export default StyleSheet.create({
     fontSize: 18,
     fontWeight: "700",
     color: "#cb3030ff",
+  },
+  giftButton: {
+    padding: 6,
   },
 
   // --- MESSAGE LIST ---
@@ -124,5 +137,63 @@ export default StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     backgroundColor: "#fff",
+  },
+
+  // --- MODAL QUÀ TẶNG ---
+  modalBlur: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
+  giftSheet: { backgroundColor: '#fff', borderTopLeftRadius: 40, borderTopRightRadius: 40, padding: 25, maxHeight: '80%' },
+  sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
+  sheetTitle: { fontSize: 22, fontWeight: 'bold' },
+  giftGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-around' },
+  giftCard: { width: '31%', backgroundColor: '#fff5f7', borderRadius: 20, padding: 10, alignItems: 'center', marginBottom: 15, borderWidth: 1, borderColor: '#ffe0e9' },
+  giftEmoji: { fontSize: 35, marginBottom: 5 },
+  giftNameText: { fontSize: 11, fontWeight: 'bold', color: '#555' },
+  giftPriceContainer: { flexDirection: 'row', alignItems: 'center' },
+  giftPriceText: { fontSize: 12, color: '#ffae00', fontWeight: 'bold' },
+
+  // --- AI SUGGESTIONS ---
+  suggestionsContainer: {
+    padding: 20,
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    margin: 10,
+    borderRadius: 15,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 5,
+  },
+  suggestionsTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 15,
+    textAlign: 'center',
+  },
+  suggestionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f8f9fa',
+    borderWidth: 1,
+    borderColor: '#ff3366',
+    borderRadius: 25,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    marginVertical: 5,
+    width: '100%',
+    justifyContent: 'space-between',
+  },
+  suggestionText: {
+    fontSize: 14,
+    color: '#333',
+    flex: 1,
+    marginRight: 10,
+  },
+  suggestionsHint: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 10,
+    textAlign: 'center',
+    fontStyle: 'italic',
   },
 });

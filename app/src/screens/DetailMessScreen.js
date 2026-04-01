@@ -10,15 +10,17 @@ import {
   Image,
   ActivityIndicator,
   Alert,
+  Modal,
+  ScrollView,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import io from "socket.io-client";
 import axios from "axios";
 import { API_BASE_URL } from "@env";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import styles from "../styles/DetailMessScreen.styles";
 
-export default function DetailMessScreen({ route }) {
+export default function DetailMessScreen({ route, navigation }) {
   const { matchUser } = route.params;
   const [messages, setMessages] = useState([]);
   const [message, setMessage] = useState("");
@@ -26,6 +28,30 @@ export default function DetailMessScreen({ route }) {
   const [loading, setLoading] = useState(true);
   const socketRef = useRef(null);
   const flatListRef = useRef(null);
+
+  // States cho Quà tặng
+  const [showGiftModal, setShowGiftModal] = useState(false);
+  const [gifts, setGifts] = useState([]);
+  const [loadingGifts, setLoadingGifts] = useState(false);
+
+  // States cho AI Suggestions
+  const [suggestions, setSuggestions] = useState([]);
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
+
+  // --- Điều hướng sang trang profile
+  const handleNavigateToProfile = () => {
+    const receiverId = getReceiverId();
+    if (!receiverId) return;
+
+    // Tạo một đối tượng user cơ bản để gửi đi
+    const userForProfile = {
+      id: receiverId,
+      name: matchUser.partner_name,
+      avatar_url: matchUser.partner_avatar,
+      // UserProfileScreen sẽ tự fetch data đầy đủ dựa vào ID
+    };
+    navigation.navigate("UserProfile", { user: userForProfile });
+  };
 
   // --- Format thời gian
   const formatDateTime = (dateStr) => {
@@ -41,9 +67,96 @@ export default function DetailMessScreen({ route }) {
   // --- Lấy receiver_id đúng
   const getReceiverId = () => {
     if (!matchUser || !userId) return null;
-    if (matchUser.partner_id && matchUser.partner_id !== userId) return matchUser.partner_id;
-    if (matchUser.user1_id && matchUser.user2_id) return matchUser.user1_id === userId ? matchUser.user2_id : matchUser.user1_id;
+    if (matchUser.partner_id && matchUser.partner_id !== userId)
+      return matchUser.partner_id;
+    if (matchUser.user1_id && matchUser.user2_id)
+      return matchUser.user1_id === userId
+        ? matchUser.user2_id
+        : matchUser.user1_id;
     return null;
+  };
+
+  // ==============================
+  // 🎁 LOGIC QUÀ TẶNG
+  // ==============================
+  const fetchGifts = async () => {
+    try {
+      setLoadingGifts(true);
+      setShowGiftModal(true);
+      const token = await AsyncStorage.getItem("token");
+      const res = await axios.get(`${API_BASE_URL}/gifts`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setGifts(Array.isArray(res.data) ? res.data : []);
+    } catch (err) {
+      Alert.alert("Lỗi", "Không thể tải danh sách quà tặng.");
+    } finally {
+      setLoadingGifts(false);
+    }
+  };
+
+  const handleSendGift = (gift) => {
+    const receiver_id = getReceiverId();
+    if (!receiver_id) {
+        Alert.alert("Lỗi", "Không thể xác định người nhận.");
+        return;
+    }
+
+    Alert.alert(
+      "Xác nhận tặng quà",
+      `Tặng ${gift.icon} ${gift.name} (${gift.price} xu)?`,
+      [
+        { text: "Hủy", style: "cancel" },
+        {
+          text: "Tặng",
+          onPress: async () => {
+            try {
+              const token = await AsyncStorage.getItem("token");
+              const res = await axios.post(
+                `${API_BASE_URL}/send-gift`,
+                {
+                  receiver_id: receiver_id,
+                  gift_id: gift.id,
+                },
+                { headers: { Authorization: `Bearer ${token}` } }
+              );
+
+              Alert.alert("Thành công! 🎁", res.data.message);
+              setShowGiftModal(false);
+            } catch (err) {
+              Alert.alert(
+                "Thông báo",
+                err.response?.data?.message || "Lỗi giao dịch."
+              );
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  // ==============================
+  // 🤖 AI SUGGESTIONS LOGIC
+  // ==============================
+  const fetchSuggestions = async () => {
+    try {
+      setLoadingSuggestions(true);
+      const token = await AsyncStorage.getItem("token");
+      const res = await axios.get(`${API_BASE_URL}/mess/${matchUser.match_id}/suggestions`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setSuggestions(Array.isArray(res.data.suggestions) ? res.data.suggestions : []);
+    } catch (err) {
+      console.error("Fetch suggestions error:", err.response?.data || err.message);
+      setSuggestions([]);
+    } finally {
+      setLoadingSuggestions(false);
+    }
+  };
+
+  const handleSendSuggestion = (suggestionText) => {
+    setMessage(suggestionText);
+    // Tự động focus vào input để user có thể edit trước khi gửi
   };
 
   // --- Init socket + fetch messages
@@ -86,6 +199,9 @@ export default function DetailMessScreen({ route }) {
 
         // --- Fetch old messages ---
         await fetchMessages(token);
+
+        // --- Fetch AI suggestions ---
+        await fetchSuggestions();
       } catch (err) {
         console.error("Init error:", err.message);
         Alert.alert("Lỗi", "Không thể tải dữ liệu chat.");
@@ -171,11 +287,38 @@ export default function DetailMessScreen({ route }) {
     <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === "ios" ? "padding" : undefined}>
       {/* HEADER */}
       <View style={styles.header}>
-        <Image source={{ uri: matchUser.partner_avatar }} style={styles.avatar} />
-        <Text style={styles.name}>{matchUser.partner_name}</Text>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+            <Ionicons name="arrow-back" size={28} color="#ff3366" />
+        </TouchableOpacity>
+        <TouchableOpacity onPress={handleNavigateToProfile} style={styles.profileLink}>
+            <Image source={{ uri: matchUser.partner_avatar }} style={styles.avatar} />
+            <Text style={styles.name}>{matchUser.partner_name}</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.giftButton} onPress={fetchGifts}>
+          <MaterialIcons name="card-giftcard" size={28} color="#ff3366" />
+        </TouchableOpacity>
       </View>
 
       {/* CHAT BODY */}
+      {messages.length === 0 && suggestions.length > 0 && (
+        <View style={styles.suggestionsContainer}>
+          <Text style={styles.suggestionsTitle}>💬 Gợi ý mở đầu cuộc trò chuyện:</Text>
+          {suggestions.map((suggestion, index) => (
+            <TouchableOpacity
+              key={index}
+              style={styles.suggestionButton}
+              onPress={() => handleSendSuggestion(suggestion)}
+            >
+              <Text style={styles.suggestionText}>{suggestion}</Text>
+              <Ionicons name="send" size={16} color="#ff3366" />
+            </TouchableOpacity>
+          ))}
+          <Text style={styles.suggestionsHint}>
+            Nhấn vào gợi ý để sử dụng hoặc chỉnh sửa trước khi gửi
+          </Text>
+        </View>
+      )}
+
       <FlatList
         ref={flatListRef}
         data={messages}
@@ -200,6 +343,36 @@ export default function DetailMessScreen({ route }) {
           <Ionicons name="send" size={22} color="#fff" />
         </TouchableOpacity>
       </View>
+
+      {/* MODAL QUÀ TẶNG */}
+      <Modal visible={showGiftModal} animationType="slide" transparent>
+        <View style={styles.modalBlur}>
+          <View style={styles.giftSheet}>
+            <View style={styles.sheetHeader}>
+              <Text style={styles.sheetTitle}>Gửi quà tặng</Text>
+              <TouchableOpacity onPress={() => setShowGiftModal(false)}>
+                <Ionicons name="close-circle" size={32} color="#ccc" />
+              </TouchableOpacity>
+            </View>
+            <ScrollView contentContainerStyle={styles.giftGrid}>
+              {loadingGifts ? (
+                <ActivityIndicator size="large" color="#ff3366" />
+              ) : (
+                gifts.map((gift) => (
+                  <TouchableOpacity key={gift.id} style={styles.giftCard} onPress={() => handleSendGift(gift)}>
+                    <Text style={styles.giftEmoji}>{gift.icon}</Text>
+                    <Text style={styles.giftNameText}>{gift.name}</Text>
+                    <View style={styles.giftPriceContainer}>
+                      <MaterialIcons name="monetization-on" size={14} color="#ffae00" />
+                      <Text style={styles.giftPriceText}>{gift.price}</Text>
+                    </View>
+                  </TouchableOpacity>
+                ))
+              )}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </KeyboardAvoidingView>
   );
 }

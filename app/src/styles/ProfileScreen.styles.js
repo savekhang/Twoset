@@ -65,13 +65,34 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '700',
     color: '#333',
-    marginBottom: 5,
+    marginBottom: 2, // Giảm margin xuống để điểm nổi bật sát hơn
   },
+  
+  // 🔥 Thêm style mới cho phần Balance
+  balanceContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 15,
+    borderWidth: 1,
+    borderColor: '#fbd4e3ff',
+    marginBottom: 10,
+    marginTop: 2,
+  },
+  balanceText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#ff3366',
+  },
+
   bio: {
     fontSize: 14,
     color: '#555',
     marginBottom: 5,
     textAlign: 'center',
+    paddingHorizontal: 10,
   },
   gender: {
     fontSize: 14,

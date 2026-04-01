@@ -9,15 +9,19 @@ import {
   Platform,
   ActivityIndicator,
   Image,
+  Modal,
+  ScrollView,
+  Alert,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import io from "socket.io-client";
 import axios from "axios";
 import { API_BASE_URL } from "@env";
-import styles from "../styles/DetailMessScreen.styles";
+import { Ionicons, MaterialIcons } from "@expo/vector-icons";
+import styles from "../styles/GroupChatScreen.styles";
 
-export default function GroupChatScreen({ route }) {
-  const { chat_id, chat_name } = route.params; // thêm chat_name
+export default function GroupChatScreen({ route, navigation }) {
+  const { chat_id, chat_name } = route.params;
   const [messages, setMessages] = useState([]);
   const [message, setMessage] = useState("");
   const [userId, setUserId] = useState(null);
@@ -25,6 +29,15 @@ export default function GroupChatScreen({ route }) {
   const socketRef = useRef(null);
   const flatListRef = useRef(null);
   const [socketReady, setSocketReady] = useState(false);
+
+  // States for Gifting Flow
+  const [showMemberSelectionModal, setShowMemberSelectionModal] = useState(false);
+  const [showGiftModal, setShowGiftModal] = useState(false);
+  const [groupMembers, setGroupMembers] = useState([]);
+  const [selectedUserForGift, setSelectedUserForGift] = useState(null);
+  const [gifts, setGifts] = useState([]);
+  const [loadingGifts, setLoadingGifts] = useState(false);
+  const [loadingMembers, setLoadingMembers] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -104,6 +117,89 @@ export default function GroupChatScreen({ route }) {
     };
   }, []);
 
+  // ==============================
+  // 🎁 LOGIC QUÀ TẶNG (NHÓM)
+  // ==============================
+
+  // 1. Mở modal chọn người nhận
+  const handleOpenMemberSelection = async () => {
+    try {
+      setLoadingMembers(true);
+      setShowMemberSelectionModal(true);
+      const token = await AsyncStorage.getItem("token");
+      const res = await axios.get(`${API_BASE_URL}/group/members/${chat_id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      // Lọc ra chính mình
+      const otherMembers = res.data.members.filter(m => m.user_id !== userId);
+      setGroupMembers(otherMembers);
+    } catch (err) {
+      Alert.alert("Lỗi", "Không thể tải danh sách thành viên.");
+      setShowMemberSelectionModal(false);
+    } finally {
+      setLoadingMembers(false);
+    }
+  };
+
+  // 2. Sau khi chọn người, mở modal quà
+  const handleSelectUserForGift = (user) => {
+    setSelectedUserForGift(user);
+    setShowMemberSelectionModal(false);
+    fetchGifts(); // Mở modal quà
+  };
+
+  // 3. Tải danh sách quà
+  const fetchGifts = async () => {
+    try {
+      setLoadingGifts(true);
+      setShowGiftModal(true);
+      const token = await AsyncStorage.getItem("token");
+      const res = await axios.get(`${API_BASE_URL}/gifts`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setGifts(Array.isArray(res.data) ? res.data : []);
+    } catch (err) {
+      Alert.alert("Lỗi", "Không thể tải danh sách quà tặng.");
+      setShowGiftModal(false);
+    } finally {
+      setLoadingGifts(false);
+    }
+  };
+
+  // 4. Gửi quà
+  const handleSendGift = (gift) => {
+    if (!selectedUserForGift) {
+      Alert.alert("Lỗi", "Chưa chọn người nhận quà.");
+      return;
+    }
+
+    Alert.alert(
+      "Xác nhận tặng quà",
+      `Tặng ${gift.icon} ${gift.name} (${gift.price} xu) cho ${selectedUserForGift.name}?`,
+      [
+        { text: "Hủy", style: "cancel" },
+        { 
+          text: "Tặng", 
+          onPress: async () => {
+            try {
+              const token = await AsyncStorage.getItem("token");
+              const res = await axios.post(`${API_BASE_URL}/send-gift`, {
+                receiver_id: selectedUserForGift.user_id,
+                gift_id: gift.id
+              }, { headers: { Authorization: `Bearer ${token}` } });
+
+              Alert.alert("Thành công! 🎁", res.data.message);
+              setShowGiftModal(false);
+              setSelectedUserForGift(null);
+            } catch (err) {
+              Alert.alert("Thông báo", err.response?.data?.message || "Lỗi giao dịch.");
+            }
+          }
+        }
+      ]
+    );
+  };
+
   const handleSend = () => {
     if (!message.trim() || !socketReady || !socketRef.current?.connected || !userId) return;
 
@@ -125,13 +221,17 @@ export default function GroupChatScreen({ route }) {
     const isMine = Number(item.sender_id) === Number(userId);
 
     return (
-      <View style={{ flexDirection: isMine ? "row-reverse" : "row", alignItems: "flex-end", marginBottom: 8 }}>
-        {!isMine && item.avatar_url && <Image source={{ uri: item.avatar_url }} style={styles.avatar} />}
-
+      <View style={[styles.messageContainer, isMine ? styles.myMessageContainer : styles.theirMessageContainer]}>
+        {!isMine && (
+            <Image 
+                source={{ uri: item.avatar_url || 'https://via.placeholder.com/150' }} 
+                style={styles.avatar} 
+            />
+        )}
         <View style={[styles.messageBubble, isMine ? styles.myMessage : styles.theirMessage]}>
-          {!isMine && item.sender_name && <Text style={{ fontWeight: "bold", marginBottom: 2 }}>{item.sender_name}</Text>}
+          {!isMine && <Text style={styles.senderName}>{item.sender_name}</Text>}
           <Text style={styles.messageText}>{item.content}</Text>
-          <Text style={styles.timeText}>{item.sent_at ? new Date(item.sent_at).toLocaleTimeString() : ""}</Text>
+          <Text style={styles.timeText}>{item.sent_at ? new Date(item.sent_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ""}</Text>
         </View>
       </View>
     );
@@ -149,7 +249,13 @@ export default function GroupChatScreen({ route }) {
     <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === "ios" ? "padding" : undefined}>
       {/* --- HEADER CUSTOM --- */}
       <View style={styles.header}>
-        <Text style={styles.name}>{chat_name}</Text>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+            <Ionicons name="arrow-back" size={28} color="#ff3366" />
+        </TouchableOpacity>
+        <Text style={styles.groupName}>{chat_name}</Text>
+        <TouchableOpacity onPress={handleOpenMemberSelection} style={styles.giftButton}>
+            <MaterialIcons name="card-giftcard" size={28} color="#ff3366" />
+        </TouchableOpacity>
       </View>
 
       {/* --- MESSAGE LIST --- */}
@@ -174,9 +280,67 @@ export default function GroupChatScreen({ route }) {
           returnKeyType="send"
         />
         <TouchableOpacity onPress={handleSend} style={styles.sendBtn}>
-          <Text style={{ color: "#fff", fontWeight: "bold" }}>Gửi</Text>
+          <Ionicons name="send" size={22} color="#fff" />
         </TouchableOpacity>
       </View>
+      
+      {/* --- MODAL CHỌN THÀNH VIÊN --- */}
+      <Modal visible={showMemberSelectionModal} animationType="slide" transparent>
+        <View style={styles.modalBlur}>
+          <View style={styles.sheet}>
+            <View style={styles.sheetHeader}>
+              <Text style={styles.sheetTitle}>Tặng quà cho</Text>
+              <TouchableOpacity onPress={() => setShowMemberSelectionModal(false)}>
+                <Ionicons name="close-circle" size={32} color="#ccc" />
+              </TouchableOpacity>
+            </View>
+            <FlatList
+              data={groupMembers}
+              keyExtractor={(item) => item.user_id.toString()}
+              renderItem={({ item }) => (
+                <TouchableOpacity style={styles.memberItem} onPress={() => handleSelectUserForGift(item)}>
+                  <Image source={{ uri: item.avatar_url || 'https://via.placeholder.com/150' }} style={styles.memberAvatar} />
+                  <Text style={styles.memberName}>{item.name}</Text>
+                </TouchableOpacity>
+              )}
+              ListEmptyComponent={<Text>Không có thành viên nào khác trong nhóm.</Text>}
+              onRefresh={handleOpenMemberSelection}
+              refreshing={loadingMembers}
+            />
+          </View>
+        </View>
+      </Modal>
+
+      {/* --- MODAL CHỌN QUÀ --- */}
+      <Modal visible={showGiftModal} animationType="slide" transparent>
+        <View style={styles.modalBlur}>
+          <View style={styles.sheet}>
+            <View style={styles.sheetHeader}>
+              <Text style={styles.sheetTitle}>Gửi quà tặng cho {selectedUserForGift?.name}</Text>
+              <TouchableOpacity onPress={() => setShowGiftModal(false)}>
+                <Ionicons name="close-circle" size={32} color="#ccc" />
+              </TouchableOpacity>
+            </View>
+            <ScrollView contentContainerStyle={styles.giftGrid}>
+              {loadingGifts ? (
+                <ActivityIndicator size="large" color="#ff3366" />
+              ) : (
+                gifts.map((gift) => (
+                  <TouchableOpacity key={gift.id} style={styles.giftCard} onPress={() => handleSendGift(gift)}>
+                    <Text style={styles.giftEmoji}>{gift.icon}</Text>
+                    <Text style={styles.giftNameText}>{gift.name}</Text>
+                    <View style={styles.giftPriceContainer}>
+                      <MaterialIcons name="monetization-on" size={14} color="#ffae00" />
+                      <Text style={styles.giftPriceText}>{gift.price}</Text>
+                    </View>
+                  </TouchableOpacity>
+                ))
+              )}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
     </KeyboardAvoidingView>
   );
 }

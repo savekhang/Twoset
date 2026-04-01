@@ -149,10 +149,8 @@ exports.login = async (req, res) => {
 
     if (!user.is_verified) return res.status(403).json({ message: 'Please verify your account first' });
 
-    // Update online status
     await db.query('UPDATE users SET is_online = 1, last_seen = NOW() WHERE id = ?', [user.id]);
 
-    // Calculate age
     const age = user.birthdate ? dayjs().diff(dayjs(user.birthdate), 'year') : null;
 
     const token = jwt.sign({ id: user.id, email: user.email, isPremium: !!user.is_premium, gender: user.gender }, process.env.JWT_SECRET, { expiresIn: '1d' });
@@ -167,8 +165,10 @@ exports.login = async (req, res) => {
           avatar_url: user.avatar_url,
           location: user.location_name,
           isPremium: !!user.is_premium,
-          gender: user.gender,   // 👈 thêm gender
+          gender: user.gender,
           age,
+          // 🔥 THÊM DÒNG NÀY ĐỂ TRẢ VỀ ĐIỂM SỐ
+          popularity_score: user.popularity_score || 0, 
           interests: user.interest_names ? user.interest_names.split(',') : []
         }
     });
@@ -275,13 +275,9 @@ exports.resetPassword = async (req, res) => {
 // ========== LOGIN AFTER VERIFY ==========
 exports.loginAfterVerify = async (req, res) => {
   const { email } = req.body;
-
-  if (!email) {
-    return res.status(400).json({ message: "Email is required" });
-  }
+  if (!email) return res.status(400).json({ message: "Email is required" });
 
   try {
-    // 1) Fetch user
     const [rows] = await db.query(`
       SELECT u.*, l.name AS location_name,
              GROUP_CONCAT(i.name) AS interest_names
@@ -293,41 +289,21 @@ exports.loginAfterVerify = async (req, res) => {
       GROUP BY u.id
     `, [email]);
 
-    if (rows.length === 0) {
-      return res.status(404).json({ message: "User not found" });
-    }
+    if (rows.length === 0) return res.status(404).json({ message: "User not found" });
 
     const user = rows[0];
+    if (!user.is_verified) return res.status(400).json({ message: "Please verify your account first" });
 
-    // 2) Must be verified first
-    if (!user.is_verified) {
-      return res.status(400).json({ message: "Please verify your account first" });
-    }
+    await db.query("UPDATE users SET is_online = 1, last_seen = NOW() WHERE id = ?", [user.id]);
 
-    // 3) Update online status
-    await db.query(
-      "UPDATE users SET is_online = 1, last_seen = NOW() WHERE id = ?",
-      [user.id]
-    );
+    const age = user.birthdate ? dayjs().diff(dayjs(user.birthdate), "year") : null;
 
-    // 4) Calculate age
-    const age = user.birthdate
-      ? dayjs().diff(dayjs(user.birthdate), "year")
-      : null;
-
-    // 5) Generate JWT token
     const token = jwt.sign(
-      {
-        id: user.id,
-        email: user.email,
-        isPremium: !!user.is_premium,
-        gender: user.gender
-      },
+      { id: user.id, email: user.email, isPremium: !!user.is_premium, gender: user.gender },
       process.env.JWT_SECRET,
       { expiresIn: "7d" }
     );
 
-    // 6) Return same style as login API
     return res.json({
       message: "Login after verify successful",
       token,
@@ -340,17 +316,13 @@ exports.loginAfterVerify = async (req, res) => {
         isPremium: !!user.is_premium,
         gender: user.gender,
         age,
-        interests: user.interest_names
-          ? user.interest_names.split(",")
-          : []
+        // 🔥 THÊM DÒNG NÀY Ở ĐÂY NỮA
+        popularity_score: user.popularity_score || 0,
+        interests: user.interest_names ? user.interest_names.split(",") : []
       }
     });
-
   } catch (err) {
     console.error("Login-after-verify error:", err.message);
-    return res.status(500).json({
-      message: "Server error",
-      error: err.message
-    });
+    return res.status(500).json({ message: "Server error", error: err.message });
   }
 };
