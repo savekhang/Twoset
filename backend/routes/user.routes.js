@@ -13,6 +13,7 @@ router.put("/update-profile", verifyToken, userController.updateProfile);
 router.post('/add-album-photo', verifyToken, userController.addPhoto)
 router.get("/random", verifyToken, userController.getRandomUser);
 router.get("/swipe-premium", verifyToken, userController.getPremiumMatches);
+router.get('/popular', verifyToken, userController.getPopularUsers);
 router.post("/upload-avatar", userController.updateAvatarNoToken);
 
 

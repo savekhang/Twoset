@@ -564,6 +564,31 @@ exports.updateProfile = async (req, res) => {
   }
 };
 
+// Get danh sách users có popularity_score > 0, sắp xếp giảm dần
+exports.getPopularUsers = async (req, res) => {
+  try {
+    const [rows] = await db.query(`
+      SELECT 
+        u.id, u.name, u.avatar_url, u.popularity_score,
+        TIMESTAMPDIFF(YEAR, u.birthdate, CURDATE()) AS age,
+        l.name AS location,
+        u.is_premium
+      FROM users u
+      LEFT JOIN locations l ON u.location_id = l.id
+      WHERE u.popularity_score > 0
+      ORDER BY u.popularity_score DESC
+    `);
+
+    res.status(200).json({
+      message: "Popular users fetched successfully",
+      users: rows
+    });
+  } catch (err) {
+    console.error("Get popular users error:", err);
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
+
 
 
 
